@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import torch
 
 from scipy import signal
 
@@ -7,20 +9,23 @@ class Simple:
         """
             Inputs:
                 params (obj): parameter getter
+                logger (obj): a logger to write to
                 dtype (obj): data type for tensors
                 map (obj): A map representation
         """
-	self.T = params.get_int("T")
-	self.K = params.get_int("K")
+	self.T = params.get_int("T", default=15)
+        self.K = params.get_int("K", default=62)
+	self.params = params
+	self.logger = logger
 	self.dtype = dtype
         self.map = map
 
         # Ratio of car to extend in every direction
         # TODO: project car into its actual orientation
-        self.car_ratio = params.get_float("world_rep/car_ratio") # was 3.2
-        self.car_length = params.get_float("world_rep/car_length")
+        self.car_ratio = params.get_float("world_rep/car_ratio", default=3.2) # was 3.2
+        self.car_length = params.get_float("world_rep/car_length", default=0.37)
 
-        self.car_padding = long((self.car_length / self.map.info.resolution) / self.car_ratio)
+        self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
 
 	self._load_permissible_region()
 
@@ -70,10 +75,13 @@ class Simple:
         ys += xs_p * self.map.angle_sin
         self.scaled[:, 2] += self.map.angle
 
-    def _load_permissible_region(self, params):
+    def _load_permissible_region(self):
 	# perm_reg_file = '/media/JetsonSSD/permissible_region/' + map_name
-        path = params.get_str('world_rep/map_file_location', '/media/JetsonSSD/permissible_region/')
-        name = params.get_str('world_rep/map_name')
+        path = self.params.get_str(
+            'world_rep/map_file_location',
+             default='/media/JetsonSSD/permissible_region/'
+        )
+        name = self.params.get_str('world_rep/map_name', default="identical_rooms")
 	perm_reg_file = path + name
 
         if os.path.isfile(perm_reg_file + '.npy'):
@@ -90,7 +98,7 @@ class Simple:
           KERNEL_SIZE = 31 # 15 cm = 7 pixels = kernel size 15x15
           kernel = np.ones((KERNEL_SIZE, KERNEL_SIZE))
           kernel /= kernel.sum()
-          pr = signal.convolve2d(self.perm_reg, kernel, mode='same') > 0 # boolean 2d array
+          pr = signal.convolve2d(pr, kernel, mode='same') > 0 # boolean 2d array
 	  np.save(perm_reg_file, pr)
 
 	self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(self.dtype)

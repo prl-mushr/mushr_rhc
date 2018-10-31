@@ -1,15 +1,16 @@
 class Kinematics:
   EPSILON = 1e-13
 
-  def __init__(self, params):
+  def __init__(self, params, logger, dtype):
     '''
     Args:
       K = Number of samples
     '''
     # init any datastructures needed
-    self.K = params.get_int("K")
-    self.wheel_base = params.get_float("movement_model/wheel_base")
-    self.dt = params.get_int("movement_model/dt")
+    self.logger = logger
+    self.K = params.get_int("K", default=62)
+    self.wheel_base = params.get_float("movement_model/wheel_base", default=0.33)
+    self.dt = params.get_int("movement_model/dt", default=0.1)
 
   def apply(self, pos, ctrl):
     '''
@@ -24,7 +25,7 @@ class Kinematics:
     # ctrl (velocity, steering)
 
     # apply the ctrl to the current position
-    sin2beta = ctrl[:, 1].copy().tan_().mul_(0.5).atan_().mul_(2.0).sin_().add_(EPSILON)
+    sin2beta = ctrl[:, 1].copy().tan_().mul_(0.5).atan_().mul_(2.0).sin_().add_(self.EPSILON)
 
     ##
     # v = control[:, 0]

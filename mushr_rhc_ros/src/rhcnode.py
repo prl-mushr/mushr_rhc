@@ -1,15 +1,18 @@
 import rospy
+import torch
 
-from nav_msgs.msg import Odometry
-from nav_msgs.srv import GetMap
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Odometry
+from nav_msgs.srv import GetMap
+from std_msgs.msg import Empty
 
 import logger
 import parameters
 import utils
 
 import librhc
+import librhc.types as types
 import librhc.cost as cost
 import librhc.model as model
 import librhc.trajgen as trajgen
@@ -36,7 +39,7 @@ class RHCNode:
         self.dtype = dtype
 
         self.params = parameters.RosParams()
-        self.logger = logger.RosLogger()
+        self.logger = logger.RosLog()
 
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
@@ -45,18 +48,22 @@ class RHCNode:
         self.setup_pub_sub()
 
         rate = rospy.Rate(25)
+        self.inferred_pose = None
 
         while not rospy.is_shutdown():
-            next_ctrl = self.rhctrl.step(self.inferred_pose)
-            self.publish_ctrl(next_ctrl)
+            if self.inferred_pose is not None:
+                 next_ctrl = self.rhctrl.step(self.inferred_pose)
+                 self.publish_ctrl(next_ctrl)
+            else:
+                 self.logger.debug("no inferred pose")
             rate.sleep()
 
     def load_controller(self):
-        m = self.get_model(params)
-        cg = self.get_ctrl_generator(params)
-        cf = self.get_cost_function(params)
+        m = self.get_model()
+        cg = self.get_ctrl_gen()
+        cf = self.get_cost_fn()
 
-        self.rhctrl = libmushr_rhc.MPC(self.params, self.logger,
+        self.rhctrl = librhc.MPC(self.params, self.logger,
                             self.dtype, m, cg, cf)
 
     def setup_pub_sub(self):
@@ -65,9 +72,9 @@ class RHCNode:
         rospy.Subscriber("/pp/path_goal", PoseStamped, self.cb_goal, queue_size=1)
 
         self.rp_ctrls = rospy.Publisher(
-            rospy.get_param(
+            self.params.get_str(
                 "~ctrl_topic",
-                "/vesc/high_level/ackermann_cmd_mux/input/nav_0"
+                default="/vesc/high_level/ackermann_cmd_mux/input/nav_0"
             ),
             AckermannDriveStamped, queue_size=2
         )
@@ -75,7 +82,7 @@ class RHCNode:
     def cb_reset(self, msg):
         self.load_controller()
 
-    def cb_odomb(self, msg):
+    def cb_odom(self, msg):
         self.inferred_pose = self.dtype(utils.pose_to_config(msg.pose.pose))
 
     def cb_goal(self, msg):
@@ -96,42 +103,43 @@ class RHCNode:
         self.ackermann_msg_id += 1
 
     def get_model(self):
-        mname = self.params.get_str("model", "kinematic")
-        if mname not in models:
+        mname = self.params.get_str("model", default="kinematic")
+        if mname not in motion_models:
             self.logger.fatal("model '{}' is not valid".format(mname))
-        return models[mname](params, logger, FLOAT_TENSOR)
+        return motion_models[mname](self.params, self.logger, self.dtype)
 
     def get_ctrl_gen(self):
-        tgname = self.params.get_str("ctrl_generator", "tl")
-        if cgname not in trajgens:
+        tgname = self.params.get_str("ctrl_generator", default="tl")
+        if tgname not in trajgens:
             self.logger.fatal("ctrl_gen '{}' is not valid".format(tgname))
-        return trajgens[tgname](params, logger, FLOAT_TENSOR)
+        return trajgens[tgname](self.params, self.logger, self.dtype)
 
     def get_map(self):
-        srv_name = str(rospy.get_param("static_map"))
+        srv_name = self.params.get_str("static_map", default="/static_map")
         rospy.wait_for_service(srv_name)
 
         map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
+	x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
 
         return types.MapData(
             resolution = map_msg.info.resolution,
-            origin_x = map_msg.info.origin.x,
-            origin_y = map_msg.info.origin.y,
-            orientation_angle = map_msg.info.origin.angle,
+            origin_x = x,
+            origin_y = y,
+            orientation_angle = angle,
             width = map_msg.info.width,
             height = map_msg.info.height,
             data = map_msg.data
         )
 
     def get_cost_fn(self):
-        cfname = self.params.get_str("cost_fn", "rename")
+        cfname = self.params.get_str("cost_fn", default="waypoints")
         if cfname not in cost_functions:
             self.logger.fatal("cost_fn '{}' is not valid".format(cfname))
 
-        wrname = self.params.get_str("world_rep", "simple")
+        wrname = self.params.get_str("world_rep", default="simple")
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 
-        wr = world_reps[wrname](params, logger, FLOAT_TENSOR, get_map())
+        wr = world_reps[wrname](self.params, self.logger, self.dtype, self.get_map())
 
-        return cost_functions[cfname](params, logger, FLOAT_TENSOR, wr)
+        return cost_functions[cfname](self.params, self.logger, self.dtype, wr)

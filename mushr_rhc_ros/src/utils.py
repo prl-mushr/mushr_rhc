@@ -14,8 +14,8 @@ def rosquaternion_to_angle(q):
     _, _, yaw = tf.transformations.euler_from_quaternion((x, y, z, w))
     return yaw
 
-def rospose_to_pose_arry(posemsg):
-    x = pose.position.x
-    y = pose.position.y
+def rospose_to_posetup(posemsg):
+    x = posemsg.position.x
+    y = posemsg.position.y
     th = rosquaternion_to_angle(posemsg.orientation)
-    return [x, y, th]
+    return x, y, th

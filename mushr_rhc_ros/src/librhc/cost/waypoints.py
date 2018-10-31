@@ -1,8 +1,11 @@
 class Waypoints:
-    def __init__(self, params, world_rep):
-        self.T = params.get_int("T")
-        self.K = params.get_int("K")
-        self.bounds_cost = params.get_float("bounds_cost")
+    def __init__(self, params, logger, dtype, world_rep):
+	self.params = params
+	self.logger = logger
+	self.dtype = dtype
+        self.T = params.get_int("T", default=15)
+        self.K = params.get_int("K", default=62)
+        self.bounds_cost = params.get_float("bounds_cost", default=100.0)
 
         self.world_rep = world_rep
 
