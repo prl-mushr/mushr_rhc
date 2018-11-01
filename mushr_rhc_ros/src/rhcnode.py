@@ -55,7 +55,7 @@ class RHCNode:
                  next_ctrl = self.rhctrl.step(self.inferred_pose)
                  self.publish_ctrl(next_ctrl)
             else:
-                 self.logger.debug("no inferred pose")
+                 self.logger.warn("no inferred pose")
             rate.sleep()
 
     def load_controller(self):
@@ -70,6 +70,7 @@ class RHCNode:
         rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
         rospy.Subscriber("/pf/pose/odom", Odometry, self.cb_odom, queue_size=10)
         rospy.Subscriber("/pp/path_goal", PoseStamped, self.cb_goal, queue_size=1)
+        rospy.Subscriber("/sim_car_pose/pose", PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
@@ -92,6 +93,13 @@ class RHCNode:
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
         self.rhctrl.model.set_goal(goal)
+
+    def cb_pose(self, msg):
+        self.inferred_pose = self.dtype([
+            msg.pose.position.x,
+            msg.pose.position.y,
+            utils.rosquaternion_to_angle(msg.pose.orientation)
+        ])
 
     def publish_ctrl(self, ctrl):
         ctrlmsg = AckermannDriveStamped()
