@@ -8,6 +8,7 @@ class MPC:
         self.T = params.get_int("T", default=15)
         self.K = params.get_int("K", default=62)
         self.dtype = dtype
+        self.goal = None
 
         # Rollouts buffer, the main engine of our computation
         self.rollouts = self.dtype(self.K, self.T, self.NPOS)
@@ -17,7 +18,7 @@ class MPC:
         self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
 
         self.traj_gen = traj_gen
-        self.model = mvmt_model
+        self.kinematics = mvmt_model
         self.cost = cost
         self.logger = logger
 
@@ -25,8 +26,12 @@ class MPC:
     def step(self, state):
         """
         Args:
-          state (1,3 tensor): current position
+          state (3, tensor): current position
         """
+        assert state.size() == (3,)
+        if self.goal is None:
+            return None
+
         if self._at_goal(state):
             return None
 
@@ -35,7 +40,8 @@ class MPC:
         # For each K trial, the first position is at the current position
         self.rollouts[:, 0] = state.expand_as(self.rollouts[:, 0])
 
-        trajs = traj_gen.get_control_trajectories()
+        trajs = self.traj_gen.get_control_trajectories()
+        assert trajs.size() == (self.K, self.T, 2)
 
         for t in range(1, self.T):
             cur_x = self.rollouts[:, t - 1]
@@ -43,11 +49,13 @@ class MPC:
 
         costs = self.cost.apply(self.rollouts, self.goal)
 
-        return traj_gen.generate_control(ctrls, costs)
+        return self.traj_gen.generate_control(trajs, costs)[0]
 
     def set_goal(self, goal):
+        self.logger.warn("Setting goal" % goal)
         self.goal = goal
 
     def _at_goal(self, state):
+        assert self.goal is not None
         dist = self.goal.sub(state).abs_()
-        return dist.lt(self.goal_thresholds).min() == 1
+        return dist.lt(self.goal_threshold).min() == 1

@@ -40,6 +40,7 @@ class RHCNode:
 
         self.params = parameters.RosParams()
         self.logger = logger.RosLog()
+        self.ackermann_msg_id = 0
 
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
@@ -53,9 +54,8 @@ class RHCNode:
         while not rospy.is_shutdown():
             if self.inferred_pose is not None:
                  next_ctrl = self.rhctrl.step(self.inferred_pose)
-                 self.publish_ctrl(next_ctrl)
-            else:
-                 self.logger.warn("no inferred pose")
+                 if next_ctrl is not None:
+                     self.publish_ctrl(next_ctrl)
             rate.sleep()
 
     def load_controller(self):
@@ -69,7 +69,7 @@ class RHCNode:
     def setup_pub_sub(self):
         rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
         rospy.Subscriber("/pf/pose/odom", Odometry, self.cb_odom, queue_size=10)
-        rospy.Subscriber("/pp/path_goal", PoseStamped, self.cb_goal, queue_size=1)
+        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
         rospy.Subscriber("/sim_car_pose/pose", PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
@@ -92,7 +92,7 @@ class RHCNode:
             msg.pose.position.y,
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
-        self.rhctrl.model.set_goal(goal)
+        self.rhctrl.set_goal(goal)
 
     def cb_pose(self, msg):
         self.inferred_pose = self.dtype([
@@ -102,6 +102,7 @@ class RHCNode:
         ])
 
     def publish_ctrl(self, ctrl):
+        assert ctrl.size() == (2,)
         ctrlmsg = AckermannDriveStamped()
         ctrlmsg.header.stamp = rospy.Time.now()
         ctrlmsg.header.seq = self.ackermann_msg_id

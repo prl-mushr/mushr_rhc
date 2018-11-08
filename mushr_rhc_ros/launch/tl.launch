@@ -1,5 +1,4 @@
 <launch>
-    <arg name="machine" default="flexo" />
-    <node pkg="mushr_rhc" type="main.py" machine="$(arg machine)" name="rhcontroller" output="screen" respawn="true">
+    <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
     </node>
 </launch>
