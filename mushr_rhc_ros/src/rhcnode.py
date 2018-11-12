@@ -106,8 +106,8 @@ class RHCNode:
         ctrlmsg = AckermannDriveStamped()
         ctrlmsg.header.stamp = rospy.Time.now()
         ctrlmsg.header.seq = self.ackermann_msg_id
-        ctrlmsg.drive.steering_angle = ctrl[0]
-        ctrlmsg.drive.speed = ctrl[1]
+        ctrlmsg.drive.speed = ctrl[0]
+        ctrlmsg.drive.steering_angle = ctrl[1]
         self.rp_ctrls.publish(ctrlmsg)
         self.ackermann_msg_id += 1
 

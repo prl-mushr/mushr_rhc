@@ -26,7 +26,9 @@ class Simple:
         self.car_length = params.get_float("world_rep/car_length", default=0.37)
         self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
         self._load_permissible_region()
+
         self.scaled = self.dtype(self.K * self.T, 3)
+        self.perm = torch.cuda.ByteTensor(self.K * self.T)
 
     def collisions(self, poses):
         """
@@ -40,29 +42,28 @@ class Simple:
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
 
-        perm = self.perm_reg[ys, xs] # (T*K,) with map value 0 or 1
-        perm |= self.perm_reg[ys + self.car_padding, xs] # (T*K,) with map value 0 or 1
-        perm |= self.perm_reg[ys - self.car_padding, xs] # (T*K,) with map value 0 or 1
-        perm |= self.perm_reg[ys, xs + self.car_padding] # (T*K,) with map value 0 or 1
-        perm |= self.perm_reg[ys, xs - self.car_padding] # (T*K,) with map value 0 or 1
-        perm = perm.type(self.dtype)
+        self.perm.zero_()
+        self.perm |= self.perm_reg[ys, xs]
+        self.perm |= self.perm_reg[ys + self.car_padding, xs]
+        self.perm |= self.perm_reg[ys - self.car_padding, xs]
+        self.perm |= self.perm_reg[ys, xs + self.car_padding]
+        self.perm |= self.perm_reg[ys, xs - self.car_padding]
+        self.logger.warn(self.perm)
 
-	return perm
+        return self.perm.type(self.dtype)
 
     def _world_to_map(self, poses):
         # equivalent to map_to_grid(world_to_map(poses))
         # operates in place
-        scale = self.map.resolution
+        scale = float(self.map.resolution)
 
         self.scaled.copy_(poses)
         # translation
+        self.scaled[:, 0].sub_(self.map.origin_x).mul_(1.0/scale)
+        self.scaled[:, 1].sub_(self.map.origin_y).mul_(1.0/scale)
+
         xs = self.scaled[:, 0]
         ys = self.scaled[:, 1]
-        xs -= self.map.origin_x
-        ys -= self.map.origin_y
-
-        # scale
-        self.scaled[:, :2] *= (1.0 / float(scale))
 
         # we need to store the x coordinates since they will be overwritten
         xs_p = xs.clone()
@@ -76,7 +77,7 @@ class Simple:
     def _load_permissible_region(self):
         # perm_reg_file = '/media/JetsonSSD/permissible_region/' + map_name
         path = self.params.get_str(
-            'world_rep/map_file_location',
+            'world_rep/permissible_region_dir',
              default='/tmp/permissible_region/'
         )
         name = self.params.get_str('world_rep/map_name', default="foo")
@@ -99,4 +100,6 @@ class Simple:
             pr = signal.convolve2d(pr, kernel, mode='same') > 0 # boolean 2d array
             np.save(perm_reg_file, pr)
 
-        self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(torch.cuda.IntTensor)
+        self.logger.warn(pr)
+        self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(torch.cuda.ByteTensor)
+        self.logger.warn(self.perm_reg)

@@ -1,5 +1,5 @@
 class Kinematics:
-  EPSILON = 1e-13
+  EPSILON = 1e-12
   NPOS = 3
 
   def __init__(self, params, logger, dtype):
@@ -11,8 +11,15 @@ class Kinematics:
     self.logger = logger
     self.K = params.get_int("K", default=62)
     self.wheel_base = params.get_float("movement_model/wheel_base", default=0.33)
-    self.dt = params.get_int("movement_model/dt", default=0.1)
+    self.dt = params.get_float("movement_model/dt", default=0.01)
     self.dtype = dtype
+
+    self.sin2beta   = self.dtype(self.K)
+    self.deltaTheta = self.dtype(self.K)
+    self.deltaX     = self.dtype(self.K)
+    self.deltaY     = self.dtype(self.K)
+    self.sin        = self.dtype(self.K)
+    self.cos        = self.dtype(self.K)
 
   def apply(self, pose, ctrl):
     '''
@@ -25,40 +32,21 @@ class Kinematics:
     assert pose.size() == (self.K, 3)
     assert ctrl.size() == (self.K, 2)
 
-    # pose (velocity, delta, theta)
-    # ctrl (velocity, steering)
+    self.sin2beta.copy_(ctrl[:, 1]).tan_().mul_(0.5).atan_().mul_(2.0).sin_().add_(self.EPSILON)
 
-    # apply the ctrl to the current position
-    sin2beta = ctrl[:, 1].tan().mul_(0.5).atan_().mul_(2.0).sin_().add_(self.EPSILON)
+    self.deltaTheta.copy_(ctrl[:, 0]).div_(self.wheel_base).mul_(self.sin2beta).mul_(self.dt)
 
-    ##
-    # v = control[:, 0]
-    # delta = control[:, 1]
-    theta = pose[:, 2]
+    self.sin.copy_(pose[:, 2]).sin_()
+    self.cos.copy_(pose[:, 2]).cos_()
 
-    # beta = torch.atan(torch.mul(torch.tan(delta), 0.5))
-    # sin2beta = torch.sin(torch.mul(beta, 2.0))
-    # for numerical stability
-    # sin2beta = self.where(sin2beta == 0, \
-    #    torch.mul(torch.ones_like(sin2beta), 1e-10), sin2beta)
+    self.deltaX.copy_(pose[:, 2]).add_(self.deltaTheta).sin_().sub_(self.sin).mul_(self.wheel_base).div_(self.sin2beta)
 
-    dTheta = ctrl[:, 0].div(self.wheel_base).mul_(sin2beta).mul_(self.dt)
+    self.deltaY.copy_(pose[:, 2]).add_(self.deltaTheta).cos_().neg_().add_(self.cos).mul_(self.wheel_base).div_(self.sin2beta)
 
-    theta_sin = pose[:, 2].sin()
-    theta_cos = pose[:, 2].cos()
+    nextpos = self.dtype(self.K, 3)
+    nextpos.copy_(pose)
+    nextpos[:, 0].add_(self.deltaX)
+    nextpos[:, 1].add_(self.deltaY)
+    nextpos[:, 2].add_(self.deltaTheta)
 
-    dX=pose[:, 2].add(dTheta).sin_().sub_(theta_sin).mul_(self.wheel_base).div_(sin2beta)
-
-    # (self.robot_length / self.sin2beta) \
-    #    * (torch.sin(theta + self.deltaTheta) - torch.sin(theta))
-    dY=pose[:, 2].add(dTheta).cos_().neg_().add_(theta_cos).mul_(self.wheel_base).div_(sin2beta)
-
-    # deltaY = (self.robot_length / self.sin2beta) \
-    # * (-torch.cos(theta + self.deltaTheta) + torch.cos(theta))
-
-    next_pose=self.dtype(self.K, self.NPOS)
-    next_pose[:, 0].copy_(dX).add_(pose[:, 0])
-    next_pose[:, 1].copy_(dY).add_(pose[:, 1])
-    next_pose[:, 2].copy_(dTheta).add_(pose[:, 2])
-
-    return next_pose
+    return nextpos

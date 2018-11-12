@@ -22,7 +22,7 @@ class Waypoints:
 
         all_poses = poses.view(self.K * self.T, 3)
 
-        dist_raw = all_poses.sub(goal)
+        dist_raw = all_poses[:, :2].sub(goal[:2])
 
         # Use the x and y coordinates to compute the distance
         dists = dist_raw.norm(p=2, dim=1)
