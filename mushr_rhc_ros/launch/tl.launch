@@ -1,5 +1,5 @@
 <launch>
-    <arg name="T" default="15" />
+    <arg name="T" default="30" />
     <arg name="K" default="62" />
 
     <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">

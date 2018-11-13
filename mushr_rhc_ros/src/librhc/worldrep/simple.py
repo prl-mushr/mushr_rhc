@@ -49,9 +49,6 @@ class Simple:
         self.perm |= self.perm_reg[ys, xs + self.car_padding]
         self.perm |= self.perm_reg[ys, xs - self.car_padding]
 
-        for i in range(self.K * self.T):
-            print "x {} y {} collision {}".format(xs[i], ys[i], self.perm[i])
-
         return self.perm.type(self.dtype)
 
     def _world_to_map(self, poses):
@@ -84,6 +81,7 @@ class Simple:
         name = self.params.get_str('world_rep/map_name', default="foo")
         perm_reg_file = path + name
 
+        self.logger.info("Loading map")
         if os.path.isfile(perm_reg_file + '.npy'):
             pr = np.load(perm_reg_file + '.npy')
         else:
@@ -102,3 +100,4 @@ class Simple:
             np.save(perm_reg_file, pr)
 
         self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(torch.cuda.ByteTensor)
+        self.logger.info("dont loading map")

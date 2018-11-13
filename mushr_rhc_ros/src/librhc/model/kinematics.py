@@ -11,7 +11,7 @@ class Kinematics:
     self.logger = logger
     self.K = params.get_int("K", default=62)
     self.wheel_base = params.get_float("movement_model/wheel_base", default=0.33)
-    self.dt = params.get_float("movement_model/dt", default=0.01)
+    self.dt = params.get_float("movement_model/dt", default=0.05)
     self.dtype = dtype
 
     self.sin2beta   = self.dtype(self.K)
