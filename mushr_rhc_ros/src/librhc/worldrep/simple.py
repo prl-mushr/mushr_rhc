@@ -48,7 +48,9 @@ class Simple:
         self.perm |= self.perm_reg[ys - self.car_padding, xs]
         self.perm |= self.perm_reg[ys, xs + self.car_padding]
         self.perm |= self.perm_reg[ys, xs - self.car_padding]
-        self.logger.warn(self.perm)
+
+        for i in range(self.K * self.T):
+            print "x {} y {} collision {}".format(xs[i], ys[i], self.perm[i])
 
         return self.perm.type(self.dtype)
 
@@ -58,9 +60,11 @@ class Simple:
         scale = float(self.map.resolution)
 
         self.scaled.copy_(poses)
+
         # translation
         self.scaled[:, 0].sub_(self.map.origin_x).mul_(1.0/scale)
         self.scaled[:, 1].sub_(self.map.origin_y).mul_(1.0/scale)
+        self.scaled[:, 2] += self.map.angle
 
         xs = self.scaled[:, 0]
         ys = self.scaled[:, 1]
@@ -68,11 +72,8 @@ class Simple:
         # we need to store the x coordinates since they will be overwritten
         xs_p = xs.clone()
 
-        xs *= self.map.angle_cos
-        xs -= ys * self.map.angle_sin
-        ys *= self.map.angle_cos
-        ys += xs_p * self.map.angle_sin
-        self.scaled[:, 2] += self.map.angle
+        xs = xs * self.map.angle_cos - ys * self.map.angle_sin
+        ys = xs_p * self.map.angle_sin + ys * self.map.angle_cos
 
     def _load_permissible_region(self):
         # perm_reg_file = '/media/JetsonSSD/permissible_region/' + map_name
@@ -100,6 +101,4 @@ class Simple:
             pr = signal.convolve2d(pr, kernel, mode='same') > 0 # boolean 2d array
             np.save(perm_reg_file, pr)
 
-        self.logger.warn(pr)
         self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(torch.cuda.ByteTensor)
-        self.logger.warn(self.perm_reg)

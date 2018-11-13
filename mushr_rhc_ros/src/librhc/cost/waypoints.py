@@ -31,5 +31,7 @@ class Waypoints:
 
         costs = torch.add(dists, self.bounds_cost, collisions)
 
+        raw_input("press enter")
+
         return costs.view(self.K, self.T).sum(dim=1)
 
