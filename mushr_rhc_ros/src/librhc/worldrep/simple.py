@@ -23,7 +23,7 @@ class Simple:
         # Ratio of car to extend in every direction
         # TODO: project car into its actual orientation
         self.car_ratio = params.get_float("world_rep/car_ratio", default=3.2) # was 3.2
-        self.car_length = params.get_float("world_rep/car_length", default=0.37)
+        self.car_length = params.get_float("world_rep/car_length", default=0.33)
         self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
         self._load_permissible_region()
 
@@ -34,6 +34,8 @@ class Simple:
         """
         Arguments:
             poses (K * T, 3 tensor)
+        Returns:
+            (K * T, tensor) 1 if collision, 0 otherwise
         """
         assert poses.size() == (self.K * self.T, 3)
 
@@ -76,7 +78,7 @@ class Simple:
         # perm_reg_file = '/media/JetsonSSD/permissible_region/' + map_name
         path = self.params.get_str(
             'world_rep/permissible_region_dir',
-             default='/tmp/permissible_region/'
+             default='~/permissible_region/'
         )
         name = self.params.get_str('world_rep/map_name', default="foo")
         perm_reg_file = path + name
@@ -100,4 +102,4 @@ class Simple:
             np.save(perm_reg_file, pr)
 
         self.perm_reg = torch.from_numpy(pr.astype(np.int)).type(torch.cuda.ByteTensor)
-        self.logger.info("dont loading map")
+        self.logger.info("Done loading map")

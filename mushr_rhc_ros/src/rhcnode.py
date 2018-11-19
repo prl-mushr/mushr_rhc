@@ -42,6 +42,8 @@ class RHCNode:
         self.logger = logger.RosLog()
         self.ackermann_msg_id = 0
 
+        self.goal = None
+
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
 
@@ -58,13 +60,13 @@ class RHCNode:
                      self.publish_ctrl(next_ctrl)
             rate.sleep()
 
-    def load_controller(self):
+    def load_controller(self, goal=None):
         m = self.get_model()
         cg = self.get_ctrl_gen()
         cf = self.get_cost_fn()
 
         self.rhctrl = librhc.MPC(self.params, self.logger,
-                            self.dtype, m, cg, cf)
+                            self.dtype, m, cg, cf, goal=goal)
 
     def setup_pub_sub(self):
         rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
@@ -81,18 +83,20 @@ class RHCNode:
         )
 
     def cb_reset(self, msg):
-        self.load_controller()
+        self.load_controller(self.goal)
 
     def cb_odom(self, msg):
-        self.inferred_pose = self.dtype(utils.pose_to_config(msg.pose.pose))
+        self.inferred_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
 
     def cb_goal(self, msg):
+        self.logger.info("Setting goal: {}".format(msg))
         goal = self.dtype([
             msg.pose.position.x,
             msg.pose.position.y,
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
         self.rhctrl.set_goal(goal)
+        self.goal = goal
 
     def cb_pose(self, msg):
         self.inferred_pose = self.dtype([
@@ -112,20 +116,22 @@ class RHCNode:
         self.ackermann_msg_id += 1
 
     def get_model(self):
-        mname = self.params.get_str("model", default="kinematic")
+        mname = self.params.get_str("model/name", default="kinematic")
         if mname not in motion_models:
             self.logger.fatal("model '{}' is not valid".format(mname))
         return motion_models[mname](self.params, self.logger, self.dtype)
 
     def get_ctrl_gen(self):
-        tgname = self.params.get_str("ctrl_generator", default="tl")
+        tgname = self.params.get_str("traj_gen/name", default="tl")
         if tgname not in trajgens:
             self.logger.fatal("ctrl_gen '{}' is not valid".format(tgname))
         return trajgens[tgname](self.params, self.logger, self.dtype)
 
     def get_map(self):
         srv_name = self.params.get_str("static_map", default="/static_map")
+        self.logger.info("Waiting for map service")
         rospy.wait_for_service(srv_name)
+        self.logger.info("Map service started")
 
         map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
 	x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
@@ -141,11 +147,11 @@ class RHCNode:
         )
 
     def get_cost_fn(self):
-        cfname = self.params.get_str("cost_fn", default="waypoints")
+        cfname = self.params.get_str("cost_fn/name", default="waypoints")
         if cfname not in cost_functions:
             self.logger.fatal("cost_fn '{}' is not valid".format(cfname))
 
-        wrname = self.params.get_str("world_rep", default="simple")
+        wrname = self.params.get_str("world_rep/name", default="simple")
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 

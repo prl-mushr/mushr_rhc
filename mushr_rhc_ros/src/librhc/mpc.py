@@ -4,11 +4,11 @@ class MPC:
     # Number of elements in the position vector
     NPOS = 3
 
-    def __init__(self, params, logger, dtype, mvmt_model, traj_gen, cost):
+    def __init__(self, params, logger, dtype, mvmt_model, traj_gen, cost, goal=None):
         self.T = params.get_int("T", default=15)
         self.K = params.get_int("K", default=62)
         self.dtype = dtype
-        self.goal = None
+        self.goal = goal
 
         # Rollouts buffer, the main engine of our computation
         self.rollouts = self.dtype(self.K, self.T, self.NPOS)

@@ -3,15 +3,11 @@ class Kinematics:
   NPOS = 3
 
   def __init__(self, params, logger, dtype):
-    '''
-    Args:
-      K = Number of samples
-    '''
     # init any datastructures needed
     self.logger = logger
     self.K = params.get_int("K", default=62)
-    self.wheel_base = params.get_float("movement_model/wheel_base", default=0.33)
-    self.dt = params.get_float("movement_model/dt", default=0.05)
+    self.wheel_base = params.get_float("model/wheel_base", default=0.33)
+    self.dt = params.get_float("model/dt", default=0.05)
     self.dtype = dtype
 
     self.sin2beta   = self.dtype(self.K)
@@ -27,7 +23,7 @@ class Kinematics:
       pose (K, NPOS tensor): The current position
       ctrl (K, NCTRL tensor): Control to apply to the current position
     Return:
-      The next position given the current control
+      (K, NCTRL tensor) The next position given the current control
     '''
     assert pose.size() == (self.K, 3)
     assert ctrl.size() == (self.K, 2)

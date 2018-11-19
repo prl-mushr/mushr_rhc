@@ -1,4 +1,3 @@
 <launch>
-    <arg name="map_name" default="$(find racecar)/maps/short-course-33.yaml"/>
-    <node pkg="map_server" name="map_server" type="map_server" args="$(arg map_name)"/>
+    <node pkg="map_server" name="map_server" type="map_server" args="$(find mushr_sim)/maps/real-floor0.yaml"/>
 </launch>

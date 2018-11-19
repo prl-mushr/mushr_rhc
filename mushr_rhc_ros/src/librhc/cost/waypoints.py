@@ -7,7 +7,7 @@ class Waypoints:
         self.dtype = dtype
         self.T = params.get_int("T", default=15)
         self.K = params.get_int("K", default=62)
-        self.bounds_cost = params.get_float("bounds_cost", default=100.0)
+        self.bounds_cost = params.get_float("cost_fn/bounds_cost", default=100.0)
 
         self.world_rep = world_rep
 
@@ -16,6 +16,8 @@ class Waypoints:
         Arguments:
             poses (K, T, 3 tensor): Roll out of T positions
             goal  (3, tensor): Goal position
+        Returns:
+            (K, tensor) of costs for each path
         """
         assert poses.size() == (self.K, self.T, 3)
         assert goal.size() == (3,)
