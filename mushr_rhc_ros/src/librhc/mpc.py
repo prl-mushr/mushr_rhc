@@ -5,22 +5,32 @@ class MPC:
     NPOS = 3
 
     def __init__(self, params, logger, dtype, mvmt_model, traj_gen, cost):
-        self.T = params.get_int("T", default=15)
-        self.K = params.get_int("K", default=62)
         self.dtype = dtype
+        self.logger = logger
+        self.params = params
         self.goal = None
-
-        # Rollouts buffer, the main engine of our computation
-        self.rollouts = self.dtype(self.K, self.T, self.NPOS)
-
-        xy_thresh = params.get_float("xy_threshold", default=0.8)
-        th_thresh = params.get_float("theta_threshold", default=np.pi)
-        self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
 
         self.traj_gen = traj_gen
         self.kinematics = mvmt_model
         self.cost = cost
-        self.logger = logger
+
+        self.reset(init = True)
+
+    def reset(self, init = False):
+        self.T = self.params.get_int("T", default=15)
+        self.K = self.params.get_int("K", default=62)
+
+        # Rollouts buffer, the main engine of our computation
+        self.rollouts = self.dtype(self.K, self.T, self.NPOS)
+
+        xy_thresh = self.params.get_float("xy_threshold", default=0.8)
+        th_thresh = self.params.get_float("theta_threshold", default=np.pi)
+        self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
+
+        if not init:
+            self.traj_gen.reset()
+            self.kinematics.reset()
+            self.cost.reset()
 
     # TODO: Return None when we are at the goal
     def step(self, state):
@@ -48,12 +58,12 @@ class MPC:
             self.rollouts[:, t] = self.kinematics.apply(cur_x, trajs[:, t - 1])
 
         costs = self.cost.apply(self.rollouts, self.goal)
-
-        return self.traj_gen.generate_control(trajs, costs)[0]
+        result = self.traj_gen.generate_control(trajs, costs)[0]
+        return result
 
     def set_goal(self, goal):
-        self.logger.warn("Setting goal" % goal)
         self.goal = goal
+        self.cost.value_fn.set_goal(goal)
 
     def _at_goal(self, state):
         assert self.goal is not None

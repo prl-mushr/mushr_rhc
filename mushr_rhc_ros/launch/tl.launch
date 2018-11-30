@@ -1,9 +1,15 @@
 <launch>
-    <arg name="T" default="30" />
+    <arg name="T" default="20" />
     <arg name="K" default="62" />
+    <arg name="map_name" default="allen_basement" />
+    <arg name="permissible_region_dir" default="~/permissible_region/" />
 
     <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
+        <env name="RHC_USE_CUDA" value="1" />
+
         <param name="T" value="$(arg T)" />
         <param name="K" value="$(arg K)" />
+        <param name="world_rep/map_name" value="$(arg map_name)" />
+        <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />
     </node>
 </launch>

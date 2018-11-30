@@ -12,10 +12,11 @@ import parameters
 import utils
 
 import librhc
-import librhc.types as types
 import librhc.cost as cost
 import librhc.model as model
 import librhc.trajgen as trajgen
+import librhc.types as types
+import librhc.value as value
 import librhc.worldrep as worldrep
 
 motion_models = {
@@ -30,9 +31,14 @@ cost_functions = {
     "waypoints": cost.Waypoints,
 }
 
+value_functions = {
+    "simpleknn": value.SimpleKNN,
+}
+
 world_reps = {
     "simple": worldrep.Simple,
 }
+
 
 class RHCNode:
     def __init__(self, dtype):
@@ -50,6 +56,7 @@ class RHCNode:
 
         rate = rospy.Rate(25)
         self.inferred_pose = None
+        print "Initialized"
 
         while not rospy.is_shutdown():
             if self.inferred_pose is not None:
@@ -81,10 +88,10 @@ class RHCNode:
         )
 
     def cb_reset(self, msg):
-        self.load_controller()
+        self.rhctrl.reset()
 
     def cb_odom(self, msg):
-        self.inferred_pose = self.dtype(utils.pose_to_config(msg.pose.pose))
+        self.inferred_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
 
     def cb_goal(self, msg):
         goal = self.dtype([
@@ -112,20 +119,22 @@ class RHCNode:
         self.ackermann_msg_id += 1
 
     def get_model(self):
-        mname = self.params.get_str("model", default="kinematic")
+        mname = self.params.get_str("model_name", default="kinematic")
         if mname not in motion_models:
             self.logger.fatal("model '{}' is not valid".format(mname))
         return motion_models[mname](self.params, self.logger, self.dtype)
 
     def get_ctrl_gen(self):
-        tgname = self.params.get_str("ctrl_generator", default="tl")
+        tgname = self.params.get_str("traj_gen_name", default="tl")
         if tgname not in trajgens:
             self.logger.fatal("ctrl_gen '{}' is not valid".format(tgname))
         return trajgens[tgname](self.params, self.logger, self.dtype)
 
     def get_map(self):
         srv_name = self.params.get_str("static_map", default="/static_map")
+        self.logger.info("Waiting for map service")
         rospy.wait_for_service(srv_name)
+        self.logger.info("Map service started")
 
         map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
 	x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
@@ -141,14 +150,21 @@ class RHCNode:
         )
 
     def get_cost_fn(self):
-        cfname = self.params.get_str("cost_fn", default="waypoints")
+        cfname = self.params.get_str("cost_fn_name", default="waypoints")
         if cfname not in cost_functions:
             self.logger.fatal("cost_fn '{}' is not valid".format(cfname))
 
-        wrname = self.params.get_str("world_rep", default="simple")
+        wrname = self.params.get_str("world_rep_name", default="simple")
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 
-        wr = world_reps[wrname](self.params, self.logger, self.dtype, self.get_map())
+        map = self.get_map()
+        wr = world_reps[wrname](self.params, self.logger, self.dtype, map)
 
-        return cost_functions[cfname](self.params, self.logger, self.dtype, wr)
+        vfname = self.params.get_str("value_fn_name", default="simpleknn")
+        if vfname not in value_functions:
+            self.logger.fatal("value_fn '{}' is not valid".format(vfname))
+
+        vf = value_functions[vfname](self.params, self.logger, self.dtype, map)
+
+        return cost_functions[cfname](self.params, self.logger, self.dtype, wr, vf)

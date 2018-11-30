@@ -1,0 +1,13 @@
+<launch>
+    <arg name="racecar_version" default="racecar-v2" />
+
+    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
+
+    <include file="$(find mushr_rhc_ros)/launch/localize.launch" />
+
+    <include file="$(find racecar)/launch/teleop.launch">
+        <arg name="racecar_version" value="$(arg racecar_version)" />
+    </include>
+
+    <include file="$(find mushr_rhc_ros)/launch/tl.launch" />
+</launch>
