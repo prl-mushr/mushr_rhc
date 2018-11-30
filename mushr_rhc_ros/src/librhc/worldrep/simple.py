@@ -54,4 +54,3 @@ class Simple:
         self.perm |= self.perm_reg[ys, xs - self.car_padding]
 
         return self.perm.type(self.dtype)
-

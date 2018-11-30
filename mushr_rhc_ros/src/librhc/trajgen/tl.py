@@ -32,7 +32,6 @@ class TL:
         for t in range(self.T):
             self.ctrls[:, t, 1] = deltas
 
-
     def get_control_trajectories(self):
         '''
           Returns (K, T, NCTRL) vector of controls

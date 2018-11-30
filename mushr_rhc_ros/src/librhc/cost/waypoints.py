@@ -37,8 +37,7 @@ class Waypoints:
 
         collisions = self.world_rep.collisions(all_poses)
 
-        val_fn_poses = poses[:, self.T-1, :]#.clone().cpu().numpy()
-        cost2go = self.value_fn.get_value(val_fn_poses)
+        cost2go = self.value_fn.get_value(poses[:, self.T-1, :])
 
         costs = torch.add(dists, self.bounds_cost, collisions)
 

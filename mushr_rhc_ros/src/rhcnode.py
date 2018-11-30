@@ -48,6 +48,8 @@ class RHCNode:
         self.logger = logger.RosLog()
         self.ackermann_msg_id = 0
 
+        self.goal = None
+
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
 
@@ -65,13 +67,13 @@ class RHCNode:
                      self.publish_ctrl(next_ctrl)
             rate.sleep()
 
-    def load_controller(self):
+    def load_controller(self, goal=None):
         m = self.get_model()
         cg = self.get_ctrl_gen()
         cf = self.get_cost_fn()
 
         self.rhctrl = librhc.MPC(self.params, self.logger,
-                            self.dtype, m, cg, cf)
+                            self.dtype, m, cg, cf, goal=goal)
 
     def setup_pub_sub(self):
         rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
@@ -94,12 +96,14 @@ class RHCNode:
         self.inferred_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
 
     def cb_goal(self, msg):
+        self.logger.info("Setting goal: {}".format(msg))
         goal = self.dtype([
             msg.pose.position.x,
             msg.pose.position.y,
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
         self.rhctrl.set_goal(goal)
+        self.goal = goal
 
     def cb_pose(self, msg):
         self.inferred_pose = self.dtype([
