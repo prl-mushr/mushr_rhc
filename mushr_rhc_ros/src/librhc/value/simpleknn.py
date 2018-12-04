@@ -49,10 +49,12 @@ class SimpleKNN:
         self.goal_i = None
         self.state_lock = Lock()
 
+        print "RESOLUTION: " + str(self.map.resolution)
+
         self.perm_region = utils.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
-        self.halton_points = self.iterative_sample_halton_pts(h, w)
+        self.halton_points = self.iterative_sample_halton_pts(h, w, 1000)
 
     def iterative_sample_halton_pts(self, h, w, threshold=300):
         n = threshold * 5
@@ -75,11 +77,10 @@ class SimpleKNN:
             print "valid points len: " + str(len(valid))
         return np.array(valid)
 
-    def set_goal(self, goal, n_neighbors=7, k=2):
+    def set_goal(self, goal, n_neighbors=8, k=5):
         self.state_lock.acquire()
         # Add goal to self.halton_points
         assert goal.size() == (3,)
-        print "goal set in value function " + str(goal)
 
         goal = goal.unsqueeze(0)
         map_goal = self.dtype(goal.size())
@@ -120,10 +121,11 @@ class SimpleKNN:
         import rospy
         from visualization_msgs.msg import Marker
         from geometry_msgs.msg import Point
+        from std_msgs.msg import ColorRGBA
 
-        hp = np.zeros((len(self.halton_points), 3))
-        hp[:, 0] = self.halton_points[:,1]
-        hp[:, 1] = self.halton_points[:,0]
+        hp = np.zeros((len(self.reachable_pts), 3))
+        hp[:, 0] = self.reachable_pts[:,1]
+        hp[:, 1] = self.reachable_pts[:,0]
         utils.map2worldnp(self.map, hp)
 
         m = Marker()
@@ -140,19 +142,21 @@ class SimpleKNN:
         m.pose.orientation.y = 0.0
         m.pose.orientation.z = 0.0
         m.pose.orientation.w = 1.0
-        m.scale.x = 1.0
-        m.scale.y = 1.0
-        m.scale.z = 1.0
-        m.color.g = 1.0
-        m.color.a = 1.0
-        for pts in hp:
+        m.scale.x = .1
+        m.scale.y = .1
+        m.scale.z = .1
+        max_d = np.max(self.reachable_dst)
+        for i, pts in enumerate(hp):
             p = Point()
+            c = ColorRGBA()
+            c.a = 1
+            c.g =  int(255.0 * self.reachable_dst[i] / max_d)
             p.x, p.y = pts[0], pts[1]
             m.points.append(p)
+            m.colors.append(c)
 
-        pub = rospy.Publisher("/haltonpts", Marker, queue_size=100)
+        pub = rospy.Publisher("/markers", Marker, queue_size=100)
         pub.publish(m)
-        print "published?"
 
     def eval_edge(self, src, dst):
         # moves along line between src and dst and samples points
@@ -190,13 +194,20 @@ class SimpleKNN:
         input_points = input_poses.clone().cpu().numpy()
         utils.world2mapnp(self.map, input_points)
 
-        distances, indices = self.nbrs.kneighbors(input_points[:, :2])
+        input_points_corrected = input_points.copy()
+        input_points_corrected[:,0] = input_points[:,1]
+        input_points_corrected[:,1] = input_points[:,0]
+        distances, indices = self.nbrs.kneighbors(input_points_corrected[:, :2])
         result = np.zeros(len(input_points))
         for i in range(len(input_points)):
             idx_set = indices[i]
-            min_len = 10e10
+            min_len = 10e5
             for j, n in enumerate(idx_set):
-                min_len = min(self.reachable_dst[n]+distances[i][j], min_len)
+                e = self.eval_edge(input_points_corrected[i,:2], self.reachable_pts[n])
+                if e < 0:
+                    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
+                else:
+                    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
             result[i] = min_len
 
         self.state_lock.release()

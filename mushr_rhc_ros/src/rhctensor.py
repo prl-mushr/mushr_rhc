@@ -8,5 +8,5 @@ def float_tensor():
     return torch.cuda.FloatTensor if _use_cuda() else torch.FloatTensor
 
 def _use_cuda():
-    return os.getenv("RHC_USE_CUDA", 1) == 1 and torch.cuda.is_available()
+    return int(os.getenv("RHC_USE_CUDA", 1)) == 1 and torch.cuda.is_available()
 

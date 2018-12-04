@@ -48,15 +48,13 @@ class RHCNode:
         self.logger = logger.RosLog()
         self.ackermann_msg_id = 0
 
-        self.goal = None
-
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
 
         self.load_controller()
         self.setup_pub_sub()
 
-        rate = rospy.Rate(25)
+        rate = rospy.Rate(30)
         self.inferred_pose = None
         print "Initialized"
 
@@ -67,19 +65,18 @@ class RHCNode:
                      self.publish_ctrl(next_ctrl)
             rate.sleep()
 
-    def load_controller(self, goal=None):
+    def load_controller(self):
         m = self.get_model()
         cg = self.get_ctrl_gen()
         cf = self.get_cost_fn()
 
-        self.rhctrl = librhc.MPC(self.params, self.logger,
-                            self.dtype, m, cg, cf, goal=goal)
+        self.rhctrl = librhc.MPC(self.params, self.logger, self.dtype, m, cg, cf)
 
     def setup_pub_sub(self):
         rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
         rospy.Subscriber("/pf/pose/odom", Odometry, self.cb_odom, queue_size=10)
         rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
-        rospy.Subscriber("/sim_car_pose/pose", PoseStamped, self.cb_pose, queue_size=10)
+        #rospy.Subscriber("/sim_car_pose/pose", PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
@@ -96,14 +93,12 @@ class RHCNode:
         self.inferred_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
 
     def cb_goal(self, msg):
-        self.logger.info("Setting goal: {}".format(msg))
         goal = self.dtype([
             msg.pose.position.x,
             msg.pose.position.y,
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
         self.rhctrl.set_goal(goal)
-        self.goal = goal
 
     def cb_pose(self, msg):
         self.inferred_pose = self.dtype([
@@ -141,7 +136,7 @@ class RHCNode:
         self.logger.info("Map service started")
 
         map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
-	x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
+        x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
 
         return types.MapData(
             resolution = map_msg.info.resolution,
@@ -171,4 +166,4 @@ class RHCNode:
 
         vf = value_functions[vfname](self.params, self.logger, self.dtype, map)
 
-        return cost_functions[cfname](self.params, self.logger, self.dtype, wr, vf)
+        return cost_functions[cfname](self.params, self.logger, self.dtype, map, wr, vf)

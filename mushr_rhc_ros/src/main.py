@@ -5,6 +5,6 @@ import rhctensor
 import torch
 
 if __name__ == '__main__':
-    print("staring")
-    node = rhcnode.RHCNode(rhctorch.float_tensor())
+    print("Starting RHController Node")
+    node = rhcnode.RHCNode(rhctensor.float_tensor())
     node.start("rhcontroller")

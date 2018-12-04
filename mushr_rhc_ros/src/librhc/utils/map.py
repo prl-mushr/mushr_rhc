@@ -62,8 +62,8 @@ def load_permissible_region(params, map):
         'permissible_region_dir',
          default='/media/JetsonSSD/permissible_region/'
     )
+    path = os.path.expanduser(path)
     name = params.get_str('map_name', default="default_map")
-
     perm_reg_file = path + name
 
     if not os.path.isdir(path):
