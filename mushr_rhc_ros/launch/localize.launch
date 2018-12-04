@@ -27,8 +27,6 @@
 		publish_odom: whether or not to publish inferred pose as an odometry message.
 		              publishes on /pf/pose/odom
 	 -->
-    <arg name="map" default="$(find mushr_rhc_ros)/maps/real-floor0.yaml"/>
-    <node pkg="map_server" name="map_server" type="map_server" args="$(arg map)" />
 
 	<arg name="scan_topic" default="/scan"/>
 	<arg name="odometry_topic" default="/vesc/odom"/>
