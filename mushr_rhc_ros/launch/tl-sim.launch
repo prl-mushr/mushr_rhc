@@ -1,0 +1,19 @@
+<launch>
+    <arg name="T" default="13" />
+    <arg name="K" default="121" />
+    <arg name="desired_speed" default="2.5" />
+    <arg name="map_name" default="allen_basement" />
+    <arg name="permissible_region_dir" default="~/permissible_region/" />
+
+    <include file="$(find mushr_rhc_ros)/launch/localize.launch"/>
+
+    <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
+        <env name="RHC_USE_CUDA" value="0" />
+
+        <param name="T" value="$(arg T)" />
+        <param name="K" value="$(arg K)" />
+        <param name="world_rep/map_name" value="$(arg map_name)" />
+        <param name="traj_gen/desired_speed" value="$(arg desired_speed)" />
+        <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />
+    </node>
+</launch>

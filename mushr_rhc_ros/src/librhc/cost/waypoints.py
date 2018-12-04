@@ -39,7 +39,7 @@ class Waypoints:
         #dists = dists_raw.view(self.K, self.T, self.NPOS).norm(p=2, dim=1).mul_(10)
 
         # use terminal distance (K, tensor)
-        dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(1.0)
+        dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(0.1)
         cost2go = self.value_fn.get_value(poses[:, self.T-1, :])
 
         # get all collisions (K, T, tensor)
@@ -64,12 +64,6 @@ class Waypoints:
         raw_input("Hit enter:")
         '''
         self.viz_final(poses, result)
-
-        #costs = self.bounds_cost * collisions
-        ##costs = torch.add(dists, self.bounds_cost, collisions)
-
-        #result = costs.view(self.K, self.T).sum(dim=1)
-        #result += cost2go.type(self.dtype)
 
         return  result
 

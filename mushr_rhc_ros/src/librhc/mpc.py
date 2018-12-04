@@ -59,8 +59,6 @@ class MPC:
 
         costs = self.cost.apply(self.rollouts, self.goal)
         result = self.traj_gen.generate_control(trajs, costs)[0]
-        import rospy
-        rospy.loginfo_throttle(1, "Controll applied: " + str(result))
         return result
 
     def set_goal(self, goal):
