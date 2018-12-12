@@ -199,11 +199,13 @@ class SimpleKNN:
         input_points_corrected[:,1] = input_points[:,0]
         distances, indices = self.nbrs.kneighbors(input_points_corrected[:, :2])
         result = np.zeros(len(input_points))
+
         for i in range(len(input_points)):
             idx_set = indices[i]
             min_len = 10e5
             for j, n in enumerate(idx_set):
                 e = self.eval_edge(input_points_corrected[i,:2], self.reachable_pts[n])
+                # TODO: review this lack of pruning (talk to SJB)
                 if e < 0:
                     min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
                 else:
