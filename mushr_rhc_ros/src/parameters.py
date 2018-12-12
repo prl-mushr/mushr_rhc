@@ -1,5 +1,6 @@
 import rospy
 
+
 class RosParams:
     def get_str(self, path, default=None, global_=False):
         return str(self._get_raw(global_, path, default))

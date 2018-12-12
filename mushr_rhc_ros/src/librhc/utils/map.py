@@ -60,7 +60,7 @@ def map2worldnp(mapdata, poses):
 def load_permissible_region(params, map):
     path = params.get_str(
         'permissible_region_dir',
-         default='/media/JetsonSSD/permissible_region/'
+         default='~/permissible_region/'
     )
     path = os.path.expanduser(path)
     name = params.get_str('map_name', default="default_map")

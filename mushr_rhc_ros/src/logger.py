@@ -1,5 +1,6 @@
 import rospy
 
+
 class RosLog:
     def debug(self, msg, *args):
         rospy.logdebug(msg, *args)

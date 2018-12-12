@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class MPC:
     # Number of elements in the position vector
     NPOS = 3
@@ -14,9 +15,9 @@ class MPC:
         self.kinematics = mvmt_model
         self.cost = cost
 
-        self.reset(init = True)
+        self.reset(init=True)
 
-    def reset(self, init = False):
+    def reset(self, init=False):
         self.T = self.params.get_int("T", default=15)
         self.K = self.params.get_int("K", default=62)
 
@@ -32,17 +33,17 @@ class MPC:
             self.kinematics.reset()
             self.cost.reset()
 
-    # TODO: Return None when we are at the goal
     def step(self, state):
         """
         Args:
           state (3, tensor): current position
         """
         assert state.size() == (3,)
+
         if self.goal is None:
             return None
 
-        if self._at_goal(state):
+        if self.at_goal(state):
             return None
 
         self.rollouts.zero_()
@@ -62,10 +63,12 @@ class MPC:
         return result
 
     def set_goal(self, goal):
+        assert goal is not None
         self.goal = goal
         self.cost.value_fn.set_goal(goal)
 
-    def _at_goal(self, state):
-        assert self.goal is not None
+    def at_goal(self, state):
+        if self.goal is None:
+            return False
         dist = self.goal.sub(state).abs_()
         return dist.lt(self.goal_threshold).min() == 1

@@ -39,8 +39,9 @@
 	<arg name="max_viz_particles" default="25"/>
 	<arg name="faulty_laser"     default="true"/>
 	<arg name="laser_error_rate" default="0.6"/>
+    <arg name="output" default="screen" />
 	
-	<node pkg="particle_filter" type="particle_filter.py" name="Particle_filter" output="screen">
+	<node pkg="particle_filter" type="particle_filter.py" name="Particle_filter" output="$(arg output)">
     <!-- faulty_laser parameters -->
 		<param name="faulty_laser"     value="$(arg faulty_laser)"/>
 		<param name="laser_error_rate" value="$(arg laser_error_rate)"/>

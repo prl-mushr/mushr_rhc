@@ -1,5 +1,4 @@
 import rospy
-import torch
 
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped
@@ -57,12 +56,18 @@ class RHCNode:
         rate = rospy.Rate(30)
         self.inferred_pose = None
         print "Initialized"
+        self.expr_inited.publish(Empty())
+        print "Published"
 
         while not rospy.is_shutdown():
             if self.inferred_pose is not None:
-                 next_ctrl = self.rhctrl.step(self.inferred_pose)
-                 if next_ctrl is not None:
-                     self.publish_ctrl(next_ctrl)
+                next_ctrl = self.rhctrl.step(self.inferred_pose)
+                if next_ctrl is not None:
+                    self.publish_ctrl(next_ctrl)
+                # For experiments. If the car is at the goal, notify the
+                # experiment tool
+                if self.rhctrl.at_goal(self.inferred_pose):
+                    self.expr_at_goal.publish(Empty())
             rate.sleep()
 
     def load_controller(self):
@@ -70,13 +75,22 @@ class RHCNode:
         cg = self.get_ctrl_gen()
         cf = self.get_cost_fn()
 
-        self.rhctrl = librhc.MPC(self.params, self.logger, self.dtype, m, cg, cf)
+        self.rhctrl = librhc.MPC(self.params,
+                                 self.logger,
+                                 self.dtype,
+                                 m, cg, cf)
 
     def setup_pub_sub(self):
-        rospy.Subscriber("/rhc/reset", Empty, self.cb_reset, queue_size=1)
-        rospy.Subscriber("/pf/pose/odom", Odometry, self.cb_odom, queue_size=10)
-        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
-        #rospy.Subscriber("/sim_car_pose/pose", PoseStamped, self.cb_pose, queue_size=10)
+        rospy.Subscriber("~reset",
+                         Empty, self.cb_reset, queue_size=1)
+        rospy.Subscriber("/move_base_simple/goal",
+                         PoseStamped, self.cb_goal, queue_size=1)
+
+        # Uncomment to also get pose from ground truth
+        # rospy.Subscriber("/sim_car_pose/pose",
+        #                  PoseStamped, self.cb_pose, queue_size=)
+        rospy.Subscriber("/pf/pose/odom",
+                         Odometry, self.cb_odom, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
@@ -86,11 +100,20 @@ class RHCNode:
             AckermannDriveStamped, queue_size=2
         )
 
+        # For the experiment framework, need indicators to listen on
+        self.expr_at_goal = rospy.Publisher("/experiments/finished",
+                                            Empty, queue_size=1)
+        self.expr_inited = rospy.Publisher("/experiments/ready",
+                                           Empty, queue_size=1)
+
     def cb_reset(self, msg):
         self.rhctrl.reset()
+        self.inferred_pose = None
+        self.expr_inited.publish(Empty())
 
     def cb_odom(self, msg):
-        self.inferred_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
+        self.inferred_pose = \
+            self.dtype(utils.rospose_to_posetup(msg.pose.pose))
 
     def cb_goal(self, msg):
         goal = self.dtype([
@@ -139,13 +162,13 @@ class RHCNode:
         x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
 
         return types.MapData(
-            resolution = map_msg.info.resolution,
-            origin_x = x,
-            origin_y = y,
-            orientation_angle = angle,
-            width = map_msg.info.width,
-            height = map_msg.info.height,
-            data = map_msg.data
+            resolution=map_msg.info.resolution,
+            origin_x=x,
+            origin_y=y,
+            orientation_angle=angle,
+            width=map_msg.info.width,
+            height=map_msg.info.height,
+            data=map_msg.data
         )
 
     def get_cost_fn(self):
@@ -166,4 +189,7 @@ class RHCNode:
 
         vf = value_functions[vfname](self.params, self.logger, self.dtype, map)
 
-        return cost_functions[cfname](self.params, self.logger, self.dtype, map, wr, vf)
+        return cost_functions[cfname](self.params,
+                                      self.logger,
+                                      self.dtype,
+                                      map, wr, vf)
