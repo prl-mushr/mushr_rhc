@@ -43,11 +43,12 @@ class Waypoints:
         cost2go = self.value_fn.get_value(poses[:, self.T-1, :])
 
         # get all collisions (K, T, tensor)
-        #collisions = self.world_rep.collisions(all_poses).view(self.K, self.T)
-        collisions = self.world_rep.collisions(poses[:,self.T-1,:].view(self.K,self.NPOS)).view(self.K, 1)
+        collisions = self.world_rep.collisions(all_poses).view(self.K, self.T)
+        #collisions = self.world_rep.collisions(poses[:,self.T-1,:].view(self.K,self.NPOS)).view(self.K, 1)
+        obstacle_distances = self.world_rep.distances(all_poses).view(self.K, self.T)
 
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
-        result = dists.add(cost2go).add(collision_cost)
+        result = dists.add(cost2go).add(collision_cost).add(obstacle_distances)
 
         '''
         import rospy

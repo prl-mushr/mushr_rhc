@@ -4,6 +4,7 @@ import torch
 import rhctensor
 
 import librhc.utils as utils
+from scipy import ndimage
 
 class Simple:
     def __init__(self, params, logger, dtype, map):
@@ -29,8 +30,10 @@ class Simple:
 
         self.perm_reg = utils.load_permissible_region(self.params, self.map)
 
-        self.scaled = self.dtype(self.K, 3)
-        self.perm = rhctensor.byte_tensor()(self.K)
+        self.dist_field = ndimage.distance_transform_edt(self.perm_reg)
+
+        self.scaled = self.dtype(self.K * self.T, 3)
+        self.perm = rhctensor.byte_tensor()(self.K * self.T)
 
     def collisions(self, poses):
         """
@@ -54,3 +57,18 @@ class Simple:
         self.perm |= self.perm_reg[ys, xs - self.car_padding]
 
         return self.perm.type(self.dtype)
+
+   def distances(self, poses):
+        """
+        Arguments:
+            poses (K * T, 3 tensor)
+        Returns:
+            (K * T, tensor) with distances in terms of map frame
+        """
+
+        utils.world2map(self.map, poses, out=self.scaled)
+
+        xs = self.scaled[:, 0].long()
+        ys = self.scaled[:, 1].long()
+
+        return self.distance_field[xs, ys] * self.map.resolution
