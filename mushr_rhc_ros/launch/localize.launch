@@ -39,7 +39,7 @@
 	<arg name="max_viz_particles" default="25"/>
 	<arg name="faulty_laser"     default="true"/>
 	<arg name="laser_error_rate" default="0.6"/>
-    <arg name="output" default="screen" />
+    <arg name="output" default="log" />
 	
 	<node pkg="particle_filter" type="particle_filter.py" name="Particle_filter" output="$(arg output)">
     <!-- faulty_laser parameters -->
@@ -58,17 +58,17 @@
 		<param name="squash_factor" value="$(arg squash_factor)"/>
 		<param name="theta_discretization" value="112"/>
 		<!-- max sensor range in meters -->
-		<param name="max_range" value="5.6"/> 
-		<param name="viz" value="$(arg viz)"/> 
-		<param name="fine_timing" value="0"/> 
-		<param name="publish_odom" value="1"/> 
+		<param name="max_range" value="5.6"/>
+		<param name="viz" value="$(arg viz)"/>
+		<param name="fine_timing" value="0"/>
+		<param name="publish_odom" value="1"/>
 
 		<!-- sensor model constants, see sensor model section in the Lab5 guide document -->
-		<param name="z_short" value="0.01"/> 
-		<param name="z_max" value="0.07"/> 
-		<param name="z_rand" value="0.22"/> 
-		<param name="z_hit" value="0.85"/> 
-		<param name="sigma_hit" value="5.0"/> 
+		<param name="z_short" value="0.02"/>
+		<param name="z_max" value="0.10"/>
+		<param name="z_rand" value="0.08"/>
+		<param name="z_hit" value="0.8"/>
+		<param name="sigma_hit" value="0.03"/>
 
 		<!-- motion model dispersion constant, this could be improved. Large values will spread out
 		     the particle distribution more. Too much and it is overly computational to represent the
@@ -77,9 +77,9 @@
 
       successful values were 0.01, 0.006, 0.04
 		-->
-		<param name="motion_dispersion_x" value="0.025"/> 
-		<param name="motion_dispersion_y" value="0.006"/> 
-		<param name="motion_dispersion_theta" value="0.04"/> 
+		<param name="motion_dispersion_x" value="0.001"/>
+		<param name="motion_dispersion_y" value="0.006"/>
+		<param name="motion_dispersion_theta" value="0.04"/>
 
 		<!-- this option switches between different sensor model variants, high values are more
 		     optimized. range_variant 3 does not work for rmgpu, but variant 2 is very good. variant

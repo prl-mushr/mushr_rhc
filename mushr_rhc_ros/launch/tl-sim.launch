@@ -1,6 +1,7 @@
 <launch>
-    <arg name="T" default="13" />
-    <arg name="K" default="121" />
+    <arg name="T" default="10" />
+    <arg name="K" default="62" />
+    <arg name="dt" default="0.1" />
     <arg name="desired_speed" default="2.5" />
     <arg name="map_name" default="allen_basement" />
     <arg name="permissible_region_dir" default="~/permissible_region/" />
@@ -12,8 +13,12 @@
 
         <param name="T" value="$(arg T)" />
         <param name="K" value="$(arg K)" />
+        <param name="model/dt" value="$(arg dt)" />
         <param name="world_rep/map_name" value="$(arg map_name)" />
         <param name="traj_gen/desired_speed" value="$(arg desired_speed)" />
         <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />
+
+        <param name="use_sim_pose" value="1" />
+        <param name="use_odom_pose" value="0" />
     </node>
 </launch>

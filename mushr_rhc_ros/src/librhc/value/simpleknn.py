@@ -54,7 +54,7 @@ class SimpleKNN:
         self.perm_region = utils.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
-        self.halton_points = self.iterative_sample_halton_pts(h, w, 1000)
+        self.halton_points = self.iterative_sample_halton_pts(h, w, 3000)
 
     def iterative_sample_halton_pts(self, h, w, threshold=300):
         n = threshold * 5
@@ -77,7 +77,7 @@ class SimpleKNN:
             print "valid points len: " + str(len(valid))
         return np.array(valid)
 
-    def set_goal(self, goal, n_neighbors=8, k=5):
+    def set_goal(self, goal, n_neighbors=8, k=9):
         self.state_lock.acquire()
         # Add goal to self.halton_points
         assert goal.size() == (3,)

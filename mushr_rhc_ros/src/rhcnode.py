@@ -86,11 +86,13 @@ class RHCNode:
         rospy.Subscriber("/move_base_simple/goal",
                          PoseStamped, self.cb_goal, queue_size=1)
 
-        # Uncomment to also get pose from ground truth
-        # rospy.Subscriber("/sim_car_pose/pose",
-        #                  PoseStamped, self.cb_pose, queue_size=)
-        rospy.Subscriber("/pf/pose/odom",
-                         Odometry, self.cb_odom, queue_size=10)
+        if rospy.get_param("use_sim_pose", default=False):
+            rospy.Subscriber("/sim_car_pose/pose",
+                             PoseStamped, self.cb_pose, queue_size=10)
+
+        if rospy.get_param("use_odom_pose", default=True):
+            rospy.Subscriber("/pf/pose/odom",
+                             Odometry, self.cb_odom, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
