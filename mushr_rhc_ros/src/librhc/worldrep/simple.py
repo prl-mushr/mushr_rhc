@@ -85,8 +85,8 @@ class Simple:
         ys = self.scaled[:, 1]
         thetas = self.scaled[:, 2]
 
-        c = torch.cos(thetas).resize(len(thetas), 1)
-        s = torch.sin(thetas).resize(len(thetas), 1)
+        c = torch.cos(thetas).resize_(len(thetas), 1)
+        s = torch.sin(thetas).resize_(len(thetas), 1)
 
         self.bbox_map[:, 0] = (x * c - y * s) + xs.unsqueeze(-1).expand(-1, 4)
         self.bbox_map[:, 1] = (x * s + y * c) + ys.unsqueeze(-1).expand(-1, 4)

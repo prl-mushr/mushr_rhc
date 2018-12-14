@@ -1,55 +1,65 @@
+import matplotlib.cm as cm
 import rospy
-import numpy as np
-from visualization_msgs.msg import Marker
+import torch
+
 from geometry_msgs.msg import Point
-from std_msgs.msg import ColorRGBA
-import librhc.utils as utils
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 
-_marker_pub = rospy.Publisher("/markers", Marker, queue_size=100)
-_id = 0;
-_ids = {}
+_traj_pub = rospy.Publisher("/trajs_array", MarkerArray, queue_size=100)
 
-def viz_path(poses, costs, uniqid, colorfn, scale=.05):
-    """
-        poses should be an array of trajectories to plot in rviz
-        costs should have the same dimensionality as poses.shape()[0]
-        colorfn maps a point to an rgb tuple of colors
-    """
-    assert poses.shape()[0] == costs.shape()
 
-    m = Marker()
-    m.header.frame_id = "map"
-    m.header.stamp = rospy.Time.now()
-    m.ns = uniqid
-
-    if uniqid not in _ids:
-        _id++
-        _ids[uniqid] = _id
-
-    m.id = _ids[uniqid]
-    m.type = m.LINE_STRIP
-    m.action = m.ADD
-    m.pose.position.x = 0
-    m.pose.position.y = 0
-    m.pose.position.z = 0
-    m.pose.orientation.x = 0.0
-    m.pose.orientation.y = 0.0
-    m.pose.orientation.z = 0.0
-    m.pose.orientation.w = 1.0
-    m.scale.x = scale
-    m.scale.y = scale
-    m.scale.z = scale
+def viz_paths_cmap(poses, costs, cmap='plasma', scale=.03):
     max_c = torch.max(costs)
     min_c = torch.min(costs)
-    for i, pts in enumerate(mappos):
-        c = ColorRGBA()
-        p = Point()
-        c.a = 1.0
-        c.r, c.g, c.b = colorfn(pts, cost)
 
-        p.x, p.y = pts[0], pts[1]
-        m.points.append(p)
-        m.colors.append(c)
+    cmap = cm.get_cmap(name=cmap)
+    stride = (max_c - min_c) / (cmap.N - 1)
 
-    self.pub.publish(m)
+    def colorfn(cost):
+        r, g, b, a = 0.0, 0.0, 0.0, 1.0
+        idx = (cost - min_c) / stride
+        col = cmap.colors[int(idx.item())]
+        r, g, b = col[0], col[1], col[2]
+        if len(col) > 3:
+            a = col[3]
+        return r, g, b, a
+
+    return viz_paths(poses, costs, colorfn, scale)
+
+
+def viz_paths(poses, costs, colorfn, scale=.03):
+    """
+        poses should be an array of trajectories to plot in rviz
+        costs should have the same dimensionality as poses.size()[0]
+        colorfn maps a point to an rgb tuple of colors
+    """
+    assert poses.size()[0] == costs.size()[0]
+
+    markers = MarkerArray()
+
+    for i, (traj, cost) in enumerate(zip(poses, costs)):
+        m = Marker()
+        m.header.frame_id = "map"
+        m.header.stamp = rospy.Time.now()
+        m.ns = "paths"
+        m.id = i
+        m.type = m.LINE_STRIP
+        m.action = m.ADD
+        m.pose.position.x = 0
+        m.pose.position.y = 0
+        m.pose.position.z = 0
+        m.pose.orientation.x = 0.0
+        m.pose.orientation.y = 0.0
+        m.pose.orientation.z = 0.0
+        m.pose.orientation.w = 1.0
+        m.scale.x = scale
+        m.color.r, m.color.g, m.color.b, m.color.a = colorfn(cost)
+
+        for t in traj:
+            p = Point()
+            p.x, p.y = t[0], t[1]
+            m.points.append(p)
+
+        markers.markers.append(m)
+
+    _traj_pub.publish(markers)
