@@ -1,10 +1,12 @@
 import rospy
+import threading
 
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Odometry
 from nav_msgs.srv import GetMap
 from std_msgs.msg import Empty
+from std_srvs.srv import Empty as SrvEmpty
 
 import logger
 import parameters
@@ -47,6 +49,8 @@ class RHCNode:
         self.logger = logger.RosLog()
         self.ackermann_msg_id = 0
 
+        self.goal_event = threading.Event()
+
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
 
@@ -56,18 +60,19 @@ class RHCNode:
         rate = rospy.Rate(30)
         self.inferred_pose = None
         print "Initialized"
-        self.expr_inited.publish(Empty())
-        print "Published"
 
         while not rospy.is_shutdown():
-            if self.inferred_pose is not None:
-                next_ctrl = self.rhctrl.step(self.inferred_pose)
+            ip = self.inferred_pose
+            if ip is not None:
+                next_ctrl = self.rhctrl.step(ip)
                 if next_ctrl is not None:
                     self.publish_ctrl(next_ctrl)
                 # For experiments. If the car is at the goal, notify the
                 # experiment tool
-                if self.rhctrl.at_goal(self.inferred_pose):
+                if self.rhctrl.at_goal(ip):
                     self.expr_at_goal.publish(Empty())
+                    self.goal_event.clear()
+                    self.goal_event.wait()
             rate.sleep()
 
     def load_controller(self):
@@ -81,8 +86,7 @@ class RHCNode:
                                  m, cg, cf)
 
     def setup_pub_sub(self):
-        rospy.Subscriber("~reset",
-                         Empty, self.cb_reset, queue_size=1)
+        rospy.Service("~reset", SrvEmpty, self.srv_reset)
         rospy.Subscriber("/move_base_simple/goal",
                          PoseStamped, self.cb_goal, queue_size=1)
 
@@ -105,13 +109,12 @@ class RHCNode:
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher("/experiments/finished",
                                             Empty, queue_size=1)
-        self.expr_inited = rospy.Publisher("/experiments/ready",
-                                           Empty, queue_size=1)
 
-    def cb_reset(self, msg):
+    def srv_reset(self, msg):
+        rospy.logwarn("Resetting START")
         self.rhctrl.reset()
-        self.inferred_pose = None
-        self.expr_inited.publish(Empty())
+        rospy.logwarn("Resetting END")
+        return []
 
     def cb_odom(self, msg):
         self.inferred_pose = \
@@ -124,6 +127,7 @@ class RHCNode:
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
         self.rhctrl.set_goal(goal)
+        self.goal_event.set()
 
     def cb_pose(self, msg):
         self.inferred_pose = self.dtype([

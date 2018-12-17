@@ -1,7 +1,7 @@
 <launch>
     <arg name="T" default="10" />
     <arg name="K" default="62" />
-    <arg name="dt" default="0.1" />
+    <arg name="dt" default="0.05" />
     <arg name="desired_speed" default="2.5" />
     <arg name="map_name" default="allen_basement" />
     <arg name="permissible_region_dir" default="~/permissible_region/" />

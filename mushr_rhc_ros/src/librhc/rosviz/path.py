@@ -1,4 +1,5 @@
 import matplotlib.cm as cm
+import matplotlib.colors as colors
 import rospy
 import torch
 
@@ -12,13 +13,13 @@ def viz_paths_cmap(poses, costs, cmap='plasma', scale=.03):
     max_c = torch.max(costs)
     min_c = torch.min(costs)
 
+    norm = colors.Normalize(vmin=min_c, vmax=max_c)
+
     cmap = cm.get_cmap(name=cmap)
-    stride = (max_c - min_c) / (cmap.N - 1)
 
     def colorfn(cost):
         r, g, b, a = 0.0, 0.0, 0.0, 1.0
-        idx = (cost - min_c) / stride
-        col = cmap.colors[int(idx.item())]
+        col = cmap(norm(cost))
         r, g, b = col[0], col[1], col[2]
         if len(col) > 3:
             a = col[3]
