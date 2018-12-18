@@ -21,6 +21,8 @@ class Waypoints:
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost",
                                                  default=1000.0)
 
+        self.world_rep.reset()
+
     def apply(self, poses, goal):
         """
         Arguments:

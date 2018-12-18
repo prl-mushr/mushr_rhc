@@ -15,13 +15,12 @@ class Simple:
                 dtype (obj): data type for tensors
                 map (types.MapData): A map representation
         """
-        self.T = params.get_int("T", default=15)
-        self.K = params.get_int("K", default=62)
-        self.epsilon = params.get_float("world_rep/epsilon", default=0.5)
         self.params = params
         self.logger = logger
         self.dtype = dtype
         self.map = map
+
+        self.reset()
 
         # Ratio of car to extend in every direction
         # TODO: project car into its actual orientation
@@ -36,6 +35,11 @@ class Simple:
 
         self.dist_field[self.dist_field >= self.epsilon] = 0
         self.dist_field = 1 / (2 * self.epsilon) * (self.dist_field - self.epsilon) ** 2
+
+    def reset(self):
+        self.T = self.params.get_int("T", default=15)
+        self.K = self.params.get_int("K", default=62)
+        self.epsilon = self.params.get_float("world_rep/epsilon", default=0.5)
 
         self.scaled = self.dtype(self.K * self.T, 3)
         self.bbox_map = self.dtype(self.K * self.T, 2, 4)

@@ -6,11 +6,13 @@ from sklearn.neighbors import NearestNeighbors
 import librhc.utils as utils
 from threading import Lock
 
+
 def next_prime():
     def is_prime(num):
         "Checks if num is a prime value"
-        for i in range(2,int(num**0.5)+1):
-            if(num % i)==0: return False
+        for i in range(2, int(num**0.5)+1):
+            if(num % i) == 0:
+                return False
         return True
 
     prime = 3
@@ -18,6 +20,7 @@ def next_prime():
         if is_prime(prime):
             yield prime
         prime += 2
+
 
 def vdc(n, base=2):
     vdc, denom = 0, 1
@@ -27,6 +30,7 @@ def vdc(n, base=2):
         vdc += remainder/float(denom)
     return vdc
 
+
 def halton_sequence(size, dim):
     seq = []
     primeGen = next_prime()
@@ -35,6 +39,7 @@ def halton_sequence(size, dim):
         base = next(primeGen)
         seq.append([vdc(i, base) for i in range(size)])
     return seq
+
 
 class SimpleKNN:
     def __init__(self, params, logger, dtype, map):
@@ -54,9 +59,31 @@ class SimpleKNN:
         self.perm_region = utils.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
-        self.halton_points = self.iterative_sample_halton_pts(h, w, 3000)
+        self.points = self.iterative_sample_seq(h, w, 3000, self.halton_sampler)
 
-    def iterative_sample_halton_pts(self, h, w, threshold=300):
+    def halton_sampler(self, h, w, n):
+        # re-sample halton with more points
+        seq = halton_sequence(n, 2)
+        # get number of points in available area
+        return [(int(s[0] * h), int(s[1] * w)) for s in zip(seq[0], seq[1])]
+
+    def grid_sampler(self, h, w, n):
+        num_points_x = np.sqrt(n)
+        num_points_y = np.sqrt(n)
+        density_x = 1.0 / num_points_x
+        density_y = 1.0 / num_points_y
+
+        seq_x = np.arange(0, 1, density_x)
+        seq_y = np.arange(0, 1, density_y)
+        seq = np.transpose(
+                [np.tile(seq_y, len(seq_x)), np.repeat(seq_x, len(seq_y))]
+                )
+
+        return [(int(s[0] * h), int(s[1] * w)) for s in seq]
+
+    def iterative_sample_seq(self, h, w, threshold=300, sampler=None):
+        assert sampler is not None
+
         n = threshold * 5
         inc = threshold * 2
 
@@ -64,52 +91,50 @@ class SimpleKNN:
         while len(valid) < threshold:
             valid = []
 
-            # re-sample halton with more points
-            seq = halton_sequence(n, 2)
-            # get number of points in available area
-            all_points = [(int(s[0] * h), int(s[1] * w)) for s in zip(seq[0], seq[1])]
+            all_points = sampler(h, w, n)
 
             for y, x in all_points:
                 # if it's a valid points, append to valid_points
                 if self.perm_region[y, x] == 0:
-                    valid.append((y,x))
+                    valid.append((y, x))
             n += inc
             print "valid points len: " + str(len(valid))
         return np.array(valid)
 
-    def set_goal(self, goal, n_neighbors=8, k=9):
+    def set_goal(self, goal, n_neighbors=4, k=3):
         self.state_lock.acquire()
-        # Add goal to self.halton_points
+        # Add goal to self.points
         assert goal.size() == (3,)
 
         goal = goal.unsqueeze(0)
         map_goal = self.dtype(goal.size())
         utils.world2map(self.map, goal, out=map_goal)
 
-        map_goal = np.array([[map_goal[0,1], map_goal[0,0]]])
-        self.halton_points = np.concatenate((self.halton_points, map_goal), axis=0)
-        self.goal_i = self.halton_points.shape[0]-1
+        map_goal = np.array([[map_goal[0, 1], map_goal[0, 0]]])
+        pts_w_goal = np.concatenate((self.points, map_goal), axis=0)
+        self.goal_i = pts_w_goal.shape[0]-1
 
-        nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(self.halton_points)
-        distances, indices = nbrs.kneighbors(self.halton_points)
+        nbrs = NearestNeighbors(n_neighbors=n_neighbors,
+                                algorithm='ball_tree').fit(pts_w_goal)
+        distances, indices = nbrs.kneighbors(pts_w_goal)
         elist = []
         for idx_set in indices:
             starti = idx_set[0]
-            start = self.halton_points[starti]
+            start = pts_w_goal[starti]
             for n in idx_set[1:]:
-                neigh = self.halton_points[n]
+                neigh = pts_w_goal[n]
                 dist = self.eval_edge(start, neigh)
                 if dist > 0:
-                    elist.append((starti,n,dist))
+                    elist.append((starti, n, dist))
 
         G = nx.Graph()
         G.add_weighted_edges_from(elist)
 
         length_to_goal = nx.single_source_dijkstra_path_length(G, self.goal_i)
 
-        self.reachable_pts   = self.halton_points[length_to_goal.keys()]
+        self.reachable_pts = pts_w_goal[length_to_goal.keys()]
         self.reachable_nodes = length_to_goal.keys()
-        self.reachable_dst   = length_to_goal.values()
+        self.reachable_dst = length_to_goal.values()
 
         self.viz_halton()
 
@@ -124,8 +149,8 @@ class SimpleKNN:
         from std_msgs.msg import ColorRGBA
 
         hp = np.zeros((len(self.reachable_pts), 3))
-        hp[:, 0] = self.reachable_pts[:,1]
-        hp[:, 1] = self.reachable_pts[:,0]
+        hp[:, 0] = self.reachable_pts[:, 1]
+        hp[:, 1] = self.reachable_pts[:, 0]
         utils.map2worldnp(self.map, hp)
 
         m = Marker()
@@ -150,7 +175,7 @@ class SimpleKNN:
             p = Point()
             c = ColorRGBA()
             c.a = 1
-            c.g =  int(255.0 * self.reachable_dst[i] / max_d)
+            c.g = int(255.0 * self.reachable_dst[i] / max_d)
             p.x, p.y = pts[0], pts[1]
             m.points.append(p)
             m.colors.append(c)
@@ -167,7 +192,7 @@ class SimpleKNN:
         f = interp1d(x, y)
         xs = np.linspace(src[0], dst[0], num=10, endpoint=True)
         ys = f(xs)
-        for x,y in zip(xs,ys):
+        for x, y in zip(xs, ys):
             if self.perm_region[int(x), int(y)] == 1:
                 return -1
         return np.linalg.norm(src-dst)
@@ -195,8 +220,8 @@ class SimpleKNN:
         utils.world2mapnp(self.map, input_points)
 
         input_points_corrected = input_points.copy()
-        input_points_corrected[:,0] = input_points[:,1]
-        input_points_corrected[:,1] = input_points[:,0]
+        input_points_corrected[:, 0] = input_points[:, 1]
+        input_points_corrected[:, 1] = input_points[:, 0]
         distances, indices = self.nbrs.kneighbors(input_points_corrected[:, :2])
         result = np.zeros(len(input_points))
 
@@ -204,7 +229,7 @@ class SimpleKNN:
             idx_set = indices[i]
             min_len = 10e5
             for j, n in enumerate(idx_set):
-                e = self.eval_edge(input_points_corrected[i,:2], self.reachable_pts[n])
+                e = self.eval_edge(input_points_corrected[i, :2], self.reachable_pts[n])
                 # TODO: review this lack of pruning (talk to SJB)
                 if e < 0:
                     min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)

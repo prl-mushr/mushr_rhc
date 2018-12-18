@@ -1,5 +1,5 @@
-import rospy
 import torch
+
 
 class TL:
     # Size of control vector
@@ -8,13 +8,14 @@ class TL:
     def __init__(self, params, logger, dtype):
         self.logger = logger
         self.params = params
-        self.dtype  = dtype
+        self.dtype = dtype
 
         self.reset()
 
     def reset(self):
         self.K = self.params.get_int("K", default=62)
         self.T = self.params.get_int("T", default=15)
+        print "T: {}, K: {}".format(self.T, self.K)
 
         self.min_delta = self.params.get_float("traj_gen/min_delta", default=-0.34)
         self.max_delta = self.params.get_float("traj_gen/max_delta", default=0.34)
