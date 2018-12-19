@@ -1,4 +1,4 @@
-import librhc.rosviz as rosviz
+# import librhc.rosviz as rosviz
 
 
 class Waypoints:
@@ -62,7 +62,7 @@ class Waypoints:
         # .exponential_().add(1).pow(-1).mul(20)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost)
 
-        rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
+        # rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
 
         '''
         import sys

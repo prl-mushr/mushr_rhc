@@ -4,7 +4,7 @@ import networkx as nx
 from scipy.interpolate import interp1d
 from sklearn.neighbors import NearestNeighbors
 import librhc.utils as utils
-from threading import Lock
+from threading import Event
 
 
 def next_prime():
@@ -52,7 +52,7 @@ class SimpleKNN:
         self.dtype = dtype
         self.nbrs = None
         self.goal_i = None
-        self.state_lock = Lock()
+        self.goal_event = Event()
 
         print "RESOLUTION: " + str(self.map.resolution)
 
@@ -102,7 +102,7 @@ class SimpleKNN:
         return np.array(valid)
 
     def set_goal(self, goal, n_neighbors=4, k=3):
-        self.state_lock.acquire()
+        self.goal_event.clear()
         # Add goal to self.points
         assert goal.size() == (3,)
 
@@ -139,7 +139,7 @@ class SimpleKNN:
         self.viz_halton()
 
         self.nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(self.reachable_pts)
-        self.state_lock.release()
+        self.goal_event.set()
         print "Complete setting goal"
 
     def viz_halton(self):
@@ -207,7 +207,9 @@ class SimpleKNN:
         *Note* This function does not take theta_i into account.
         """
 
-        self.state_lock.acquire()
+        if not self.goal_event.is_set():
+            return torch.zeros(len(input_poses)).type(self.dtype)
+
         if self.goal_i is None:
             print "no goal"
             return torch.zeros(len(input_poses)).type(self.dtype)
@@ -229,13 +231,12 @@ class SimpleKNN:
             idx_set = indices[i]
             min_len = 10e5
             for j, n in enumerate(idx_set):
-                e = self.eval_edge(input_points_corrected[i, :2], self.reachable_pts[n])
-                # TODO: review this lack of pruning (talk to SJB)
-                if e < 0:
-                    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
-                else:
-                    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
+                #e = self.eval_edge(input_points_corrected[i, :2], self.reachable_pts[n])
+                ## TODO: review this lack of pruning (talk to SJB)
+                #if e < 0:
+                #    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
+                #else:
+                min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
             result[i] = min_len
 
-        self.state_lock.release()
         return torch.from_numpy(result).type(self.dtype) * self.map.resolution

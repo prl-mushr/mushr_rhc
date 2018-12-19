@@ -57,7 +57,7 @@ class RHCNode:
         self.load_controller()
         self.setup_pub_sub()
 
-        rate = rospy.Rate(30)
+        rate = rospy.Rate(50)
         self.inferred_pose = None
         print "Initialized"
 
