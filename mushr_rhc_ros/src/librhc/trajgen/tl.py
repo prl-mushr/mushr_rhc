@@ -15,17 +15,14 @@ class TL:
     def reset(self):
         self.K = self.params.get_int("K", default=62)
         self.T = self.params.get_int("T", default=15)
-        print "T: {}, K: {}".format(self.T, self.K)
 
-        self.min_delta = self.params.get_float("traj_gen/min_delta", default=-0.34)
-        self.max_delta = self.params.get_float("traj_gen/max_delta", default=0.34)
+        min_delta = self.params.get_float("traj_gen/min_delta", default=-0.34)
+        max_delta = self.params.get_float("traj_gen/max_delta", default=0.34)
 
-        desired_speed = self.params.get_float("traj_gen/desired_speed", default=1.0)
-        step_size = (self.max_delta - self.min_delta) / (self.K - 1)
-        deltas = torch.arange(
-            self.min_delta,
-            self.max_delta + step_size,
-            step_size)
+        desired_speed = self.params.get_float("traj_gen/desired_speed",
+                                              default=1.0)
+        step_size = (max_delta - min_delta) / (self.K - 1)
+        deltas = torch.arange(min_delta, max_delta + step_size, step_size)
 
         # The controls for TL are precomputed, and don't change
         self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
