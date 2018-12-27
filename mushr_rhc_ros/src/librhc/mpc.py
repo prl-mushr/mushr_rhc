@@ -28,6 +28,8 @@ class MPC:
         th_thresh = self.params.get_float("theta_threshold", default=np.pi)
         self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
 
+        self.goal = None
+
         if not init:
             self.traj_gen.reset()
             self.kinematics.reset()

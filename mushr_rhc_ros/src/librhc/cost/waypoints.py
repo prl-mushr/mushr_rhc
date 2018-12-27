@@ -16,8 +16,10 @@ class Waypoints:
         self.reset()
 
     def reset(self):
-        self.T = self.params.get_int("T", default=20)
+        self.T = self.params.get_int("T", default=15)
         self.K = self.params.get_int("K", default=62)
+        self.dist_w = self.params.get_float("cost_fn/dist_w", default=0.5)
+        self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=10)
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost",
                                                  default=1000.0)
 
@@ -45,8 +47,8 @@ class Waypoints:
         #                        self.NPOS).norm(p=2, dim=1).mul_(10)
 
         # use terminal distance (K, tensor)
-        dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(0.5)
-        cost2go = self.value_fn.get_value(poses[:, self.T-1, :]).mul(10)
+        dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(self.dist_w)
+        cost2go = self.value_fn.get_value(poses[:, self.T-1, :]).mul(self.cost2go_w)
 
         # get all collisions (K, T, tensor)
         collisions = self.world_rep.check_collision_in_map(

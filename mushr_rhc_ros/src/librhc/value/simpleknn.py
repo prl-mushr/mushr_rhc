@@ -101,7 +101,7 @@ class SimpleKNN:
             print "valid points len: " + str(len(valid))
         return np.array(valid)
 
-    def set_goal(self, goal, n_neighbors=4, k=3):
+    def set_goal(self, goal, n_neighbors=6, k=3):
         self.goal_event.clear()
         # Add goal to self.points
         assert goal.size() == (3,)

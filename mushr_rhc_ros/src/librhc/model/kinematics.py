@@ -13,7 +13,7 @@ class Kinematics:
     def reset(self):
         self.K          = self.params.get_int("K", default=62)
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
-        self.dt         = self.params.get_float("model/dt", default=0.05)
+        self.dt         = self.params.get_float("model/dt", default=0.1)
 
         self.sin2beta   = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)

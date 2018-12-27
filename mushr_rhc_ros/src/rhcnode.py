@@ -50,6 +50,7 @@ class RHCNode:
         self.ackermann_msg_id = 0
 
         self.goal_event = threading.Event()
+        self.reset_lock = threading.Lock()
 
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
@@ -62,6 +63,7 @@ class RHCNode:
         print "Initialized"
 
         while not rospy.is_shutdown():
+            self.reset_lock.acquire()
             ip = self.inferred_pose
             if ip is not None:
                 next_ctrl = self.rhctrl.step(ip)
@@ -72,7 +74,10 @@ class RHCNode:
                 if self.rhctrl.at_goal(ip):
                     self.expr_at_goal.publish(Empty())
                     self.goal_event.clear()
+                    self.reset_lock.release()
                     self.goal_event.wait()
+                    continue
+            self.reset_lock.release()
             rate.sleep()
 
     def load_controller(self):
@@ -112,7 +117,9 @@ class RHCNode:
 
     def srv_reset(self, msg):
         rospy.logwarn("Resetting START")
+        self.reset_lock.acquire()
         self.rhctrl.reset()
+        self.reset_lock.release()
         rospy.logwarn("Resetting END")
         return []
 
