@@ -5,7 +5,7 @@ class TL:
     # Size of control vector
     NCTRL = 2
 
-    def __init__(self, params, logger, dtype):
+    def __init__(self, params, logger, dtype, _model):
         self.logger = logger
         self.params = params
         self.dtype = dtype
@@ -16,10 +16,10 @@ class TL:
         self.K = self.params.get_int("K", default=62)
         self.T = self.params.get_int("T", default=15)
 
-        min_delta = self.params.get_float("traj_gen/min_delta", default=-0.34)
-        max_delta = self.params.get_float("traj_gen/max_delta", default=0.34)
+        min_delta = self.params.get_float("trajgen/min_delta", default=-0.34)
+        max_delta = self.params.get_float("trajgen/max_delta", default=0.34)
 
-        desired_speed = self.params.get_float("traj_gen/desired_speed",
+        desired_speed = self.params.get_float("trajgen/desired_speed",
                                               default=1.0)
         step_size = (max_delta - min_delta) / (self.K - 1)
         deltas = torch.arange(min_delta, max_delta + step_size, step_size)

@@ -3,7 +3,6 @@ class Kinematics:
     NPOS = 3
 
     def __init__(self, params, logger, dtype):
-        # init any datastructures needed
         self.logger = logger
         self.params = params
         self.dtype  = dtype
@@ -11,7 +10,10 @@ class Kinematics:
         self.reset()
 
     def reset(self):
-        self.K          = self.params.get_int("K", default=62)
+        self.set_k(self.params.get_int("K", default=62))
+
+    def set_k(self, k):
+        self.K          = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
         self.dt         = self.params.get_float("model/dt", default=0.1)
 
@@ -21,7 +23,6 @@ class Kinematics:
         self.deltaY     = self.dtype(self.K)
         self.sin        = self.dtype(self.K)
         self.cos        = self.dtype(self.K)
-
 
     def apply(self, pose, ctrl):
         '''

@@ -1,0 +1,4 @@
+T: 30
+K: 125
+model/dt: 0.01
+trajgen_name: 'dispersion'

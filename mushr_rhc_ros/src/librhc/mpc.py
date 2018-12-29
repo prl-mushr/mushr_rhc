@@ -5,13 +5,13 @@ class MPC:
     # Number of elements in the position vector
     NPOS = 3
 
-    def __init__(self, params, logger, dtype, mvmt_model, traj_gen, cost):
+    def __init__(self, params, logger, dtype, mvmt_model, trajgen, cost):
         self.dtype = dtype
         self.logger = logger
         self.params = params
         self.goal = None
 
-        self.traj_gen = traj_gen
+        self.trajgen = trajgen
         self.kinematics = mvmt_model
         self.cost = cost
 
@@ -31,7 +31,7 @@ class MPC:
         self.goal = None
 
         if not init:
-            self.traj_gen.reset()
+            self.trajgen.reset()
             self.kinematics.reset()
             self.cost.reset()
 
@@ -53,7 +53,7 @@ class MPC:
         # For each K trial, the first position is at the current position
         self.rollouts[:, 0] = state.expand_as(self.rollouts[:, 0])
 
-        trajs = self.traj_gen.get_control_trajectories()
+        trajs = self.trajgen.get_control_trajectories()
         assert trajs.size() == (self.K, self.T, 2)
 
         for t in range(1, self.T):
@@ -61,7 +61,7 @@ class MPC:
             self.rollouts[:, t] = self.kinematics.apply(cur_x, trajs[:, t - 1])
 
         costs = self.cost.apply(self.rollouts, self.goal)
-        result = self.traj_gen.generate_control(trajs, costs)[0]
+        result = self.trajgen.generate_control(trajs, costs)[0]
         return result
 
     def set_goal(self, goal):

@@ -14,7 +14,7 @@
         <param name="T" value="$(arg T)" />
         <param name="K" value="$(arg K)" />
         <param name="world_rep/map_name" value="$(arg map_name)" />
-        <param name="traj_gen/desired_speed" value="$(arg desired_speed)" />
+        <param name="trajgen/desired_speed" value="$(arg desired_speed)" />
         <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />
 
         <param name="use_sim_pose" value="0" />
