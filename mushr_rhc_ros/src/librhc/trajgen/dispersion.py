@@ -21,8 +21,8 @@ class Dispersion:
         dt = self.params.get_float('model/dt', default=0.1)
 
         # Number of seconds lookahead
-        time_horizon = self.params.get_int(
-                'trajgen/dispersion/time_horizon', default=3)
+        time_horizon = self.params.get_float(
+                'trajgen/dispersion/time_horizon', default=3.0)
 
         # Number of resamples in control space
         branching_factor = self.params.get_int(

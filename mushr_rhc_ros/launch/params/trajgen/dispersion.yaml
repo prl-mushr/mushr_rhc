@@ -1,4 +1,6 @@
-T: 30
-K: 125
-model/dt: 0.01
+T: 21
+K: 121
+model/dt: 0.1
 trajgen_name: 'dispersion'
+trajgen/dispersion/time_horizon: 2.1
+trajgen/dispersion/samples: 9

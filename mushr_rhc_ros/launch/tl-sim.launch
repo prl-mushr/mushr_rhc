@@ -1,18 +1,16 @@
 <launch>
     <!-- TL -->
-    <arg name="tg" default="simple" />
+    <arg name="tg" default="dispersion" />
 
     <arg name="map_name" default="allen_basement" />
     <arg name="permissible_region_dir" default="~/permissible_region/" />
     <arg name="desired_speed" default="2.0" />
-    <arg name="dt" default="0.1" />
 
     <include file="$(find mushr_rhc_ros)/launch/localize.launch"/>
 
     <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <!-- <param name="model/dt" value="$(arg dt)" /> -->
         <param name="world_rep/map_name" value="$(arg map_name)" />
         <param name="trajgen/desired_speed" value="$(arg desired_speed)" />
         <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />

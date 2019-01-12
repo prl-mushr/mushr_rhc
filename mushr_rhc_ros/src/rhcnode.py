@@ -67,6 +67,7 @@ class RHCNode:
             self.reset_lock.acquire()
             ip = self.inferred_pose
             if ip is not None:
+                self.goal_event.wait()
                 next_ctrl = self.rhctrl.step(ip)
                 if next_ctrl is not None:
                     self.publish_ctrl(next_ctrl)
@@ -75,9 +76,6 @@ class RHCNode:
                 if self.rhctrl.at_goal(ip):
                     self.expr_at_goal.publish(Empty())
                     self.goal_event.clear()
-                    self.reset_lock.release()
-                    self.goal_event.wait()
-                    continue
             self.reset_lock.release()
             rate.sleep()
 

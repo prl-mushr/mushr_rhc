@@ -1,5 +1,5 @@
 class Kinematics:
-    EPSILON = 1e-12
+    EPSILON = 1e-5
     NPOS = 3
 
     def __init__(self, params, logger, dtype):
