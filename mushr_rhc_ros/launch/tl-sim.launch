@@ -4,7 +4,7 @@
 
     <arg name="map_name" default="allen_basement" />
     <arg name="permissible_region_dir" default="~/permissible_region/" />
-    <arg name="desired_speed" default="2.0" />
+    <arg name="desired_speed" default="4.0" />
 
     <!-- 
     <include file="$(find mushr_rhc_ros)/launch/localize.launch"/>

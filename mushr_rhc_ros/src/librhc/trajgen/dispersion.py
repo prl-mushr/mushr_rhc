@@ -18,11 +18,13 @@ class Dispersion:
     def reset(self):
         self.K = self.params.get_int('K', default=62)
         self.T = self.params.get_int('T', default=15)
-        dt = self.params.get_float('model/dt', default=0.1)
 
         # Number of seconds lookahead
         time_horizon = self.params.get_float(
                 'trajgen/dispersion/time_horizon', default=3.0)
+
+        # Time between steps
+        dt = time_horizon / self.T
 
         # Number of resamples in control space
         branching_factor = self.params.get_int(
