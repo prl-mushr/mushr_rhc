@@ -4,14 +4,17 @@ import numpy as np
 import os
 import rhctensor
 import torch
+import md5
+
 
 def world2map(mapdata, poses, out=None):
     if out is None:
-        panic("out cannot be None")
+        print("out cannot be None")
+        exit(1)
 
     assert poses.size() == out.size()
 
-    out[:,:] = poses
+    out[:, :] = poses
     scale = float(mapdata.resolution)
 
     # translation
@@ -25,8 +28,9 @@ def world2map(mapdata, poses, out=None):
     # we need to store the x coordinates since they will be overwritten
     xs_p = xs.clone()
 
-    out[:,0] = xs   * mapdata.angle_cos - ys * mapdata.angle_sin
-    out[:,1] = xs_p * mapdata.angle_sin + ys * mapdata.angle_cos
+    out[:, 0] = xs * mapdata.angle_cos - ys * mapdata.angle_sin
+    out[:, 1] = xs_p * mapdata.angle_sin + ys * mapdata.angle_cos
+
 
 def world2mapnp(mapdata, poses):
     # translation
@@ -41,6 +45,7 @@ def world2mapnp(mapdata, poses):
     poses[:, 0] = mapdata.angle_cos * poses[:, 0] - mapdata.angle_sin * poses[:, 1]
     poses[:, 1] = mapdata.angle_sin * temp + mapdata.angle_cos * poses[:, 1]
     poses[:, 2] += mapdata.angle
+
 
 def map2worldnp(mapdata, poses):
     # rotation
@@ -57,35 +62,36 @@ def map2worldnp(mapdata, poses):
     poses[:, 1] += mapdata.origin_y
     poses[:, 2] += mapdata.angle
 
-def load_permissible_region(params, map):
-    path = params.get_str(
-        'permissible_region_dir',
-         default='~/permissible_region/'
-    )
+
+def load_permissible_region(params, map_info):
+    path = params.get_str('permissible_region_dir', default='~/permissible_region/')
     path = os.path.expanduser(path)
-    name = params.get_str('map_name', default="default_map")
-    perm_reg_file = path + name
 
     if not os.path.isdir(path):
         print "Directory " + path + " doesn't exist"
         exit(1)
 
-    print "loading map"
+    # Use MD5 has of map data to get a unique name
+    # print "".join(map(str, data))
+    name = map_info.data_md5
+    perm_reg_file = path + name
+
+    print "Occupancy grid file: " + perm_reg_file + '.npy'
     if os.path.isfile(perm_reg_file + '.npy'):
         pr = np.load(perm_reg_file + '.npy')
     else:
-        array_255 = np.array(map.data).reshape((map.height, map.width))
+        array_255 = map_info.data.reshape((map_info.height, map_info.width))
         pr = np.zeros_like(array_255, dtype=bool)
 
         # Numpy array of dimension (map_msg.info.height, map_msg.info.width),
         # With values 0: not permissible, 1: permissible
         pr[array_255 == 0] = 1
-        pr = np.logical_not(pr) # 0 is permissible, 1 is not
+        pr = np.logical_not(pr)  # 0 is permissible, 1 is not
 
-        KERNEL_SIZE = 31 # 15 cm = 7 pixels = kernel size 15x15
+        KERNEL_SIZE = 31  # 15 cm = 7 pixels = kernel size 15x15
         kernel = np.ones((KERNEL_SIZE, KERNEL_SIZE))
         kernel /= kernel.sum()
-        pr = signal.convolve2d(pr, kernel, mode='same') > 0 # boolean 2d array
+        pr = signal.convolve2d(pr, kernel, mode='same') > 0  # boolean 2d array
         np.save(perm_reg_file, pr)
 
     return torch.from_numpy(pr.astype(np.int)).type(rhctensor.byte_tensor())

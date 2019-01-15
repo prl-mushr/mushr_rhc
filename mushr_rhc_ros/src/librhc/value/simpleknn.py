@@ -231,11 +231,6 @@ class SimpleKNN:
             idx_set = indices[i]
             min_len = 10e5
             for j, n in enumerate(idx_set):
-                #e = self.eval_edge(input_points_corrected[i, :2], self.reachable_pts[n])
-                ## TODO: review this lack of pruning (talk to SJB)
-                #if e < 0:
-                #    min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
-                #else:
                 min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
             result[i] = min_len
 

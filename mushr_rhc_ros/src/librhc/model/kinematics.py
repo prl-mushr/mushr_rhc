@@ -5,7 +5,7 @@ class Kinematics:
     def __init__(self, params, logger, dtype):
         self.logger = logger
         self.params = params
-        self.dtype  = dtype
+        self.dtype = dtype
 
         self.reset()
 
@@ -13,16 +13,16 @@ class Kinematics:
         self.set_k(self.params.get_int("K", default=62))
 
     def set_k(self, k):
-        self.K          = k
+        self.K = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
-        self.dt         = self.params.get_float("model/dt", default=0.1)
+        self.dt = self.params.get_float("model/dt", default=0.1)
 
-        self.sin2beta   = self.dtype(self.K)
+        self.sin2beta = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)
-        self.deltaX     = self.dtype(self.K)
-        self.deltaY     = self.dtype(self.K)
-        self.sin        = self.dtype(self.K)
-        self.cos        = self.dtype(self.K)
+        self.deltaX = self.dtype(self.K)
+        self.deltaY = self.dtype(self.K)
+        self.sin = self.dtype(self.K)
+        self.cos = self.dtype(self.K)
 
     def apply(self, pose, ctrl):
         '''
@@ -42,9 +42,11 @@ class Kinematics:
         self.sin.copy_(pose[:, 2]).sin_()
         self.cos.copy_(pose[:, 2]).cos_()
 
-        self.deltaX.copy_(pose[:, 2]).add_(self.deltaTheta).sin_().sub_(self.sin).mul_(self.wheel_base).div_(self.sin2beta)
+        self.deltaX.copy_(pose[:, 2]).add_(self.deltaTheta).sin_()\
+            .sub_(self.sin).mul_(self.wheel_base).div_(self.sin2beta)
 
-        self.deltaY.copy_(pose[:, 2]).add_(self.deltaTheta).cos_().neg_().add_(self.cos).mul_(self.wheel_base).div_(self.sin2beta)
+        self.deltaY.copy_(pose[:, 2]).add_(self.deltaTheta).cos_()\
+            .neg_().add_(self.cos).mul_(self.wheel_base).div_(self.sin2beta)
 
         nextpos = self.dtype(self.K, 3)
         nextpos.copy_(pose)
