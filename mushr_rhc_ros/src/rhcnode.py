@@ -64,10 +64,10 @@ class RHCNode:
         print "Initialized"
 
         while not rospy.is_shutdown():
+            self.goal_event.wait()
             self.reset_lock.acquire()
             ip = self.inferred_pose
             if ip is not None:
-                self.goal_event.wait()
                 next_ctrl = self.rhctrl.step(ip)
                 if next_ctrl is not None:
                     self.publish_ctrl(next_ctrl)
