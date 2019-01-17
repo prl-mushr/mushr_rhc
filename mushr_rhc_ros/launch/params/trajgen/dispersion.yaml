@@ -1,5 +1,6 @@
 T: 18
 K: 121
 trajgen_name: 'dispersion'
-trajgen/dispersion/time_horizon: 1.5
+time_horizon: 1.5
 trajgen/dispersion/samples: 9
+trajgen/desired_speed: 4.5

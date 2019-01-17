@@ -15,7 +15,10 @@ class Kinematics:
     def set_k(self, k):
         self.K = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
-        self.dt = self.params.get_float("model/dt", default=0.1)
+
+        time_horizon = self.params.get_float("time_horizon", default=3.0)
+        T = self.params.get_int('T', default=15)
+        self.dt = time_horizon / T
 
         self.sin2beta = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)

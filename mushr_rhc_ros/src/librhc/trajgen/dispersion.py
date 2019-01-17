@@ -20,15 +20,13 @@ class Dispersion:
         self.T = self.params.get_int('T', default=15)
 
         # Number of seconds lookahead
-        time_horizon = self.params.get_float(
-                'trajgen/dispersion/time_horizon', default=3.0)
+        time_horizon = self.params.get_float('time_horizon', default=3.0)
 
         # Time between steps
         dt = time_horizon / self.T
 
         # Number of resamples in control space
-        branching_factor = self.params.get_int(
-                'trajgen/dispersion/branching_factor', default=3)
+        branching_factor = self.params.get_int('trajgen/dispersion/branching_factor', default=3)
         samples = self.params.get_int('trajgen/dispersion/samples', default=5)
 
         # Total number of controls in mother set

@@ -1,3 +1,5 @@
 T: 15
 K: 62
 trajgen_name: 'tl'
+time_horizon: 1.0
+trajgen/desired_speed: 2.5

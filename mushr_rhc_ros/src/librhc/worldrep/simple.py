@@ -22,10 +22,19 @@ class Simple:
 
         self.reset()
 
+    def reset(self):
+        self.T = self.params.get_int("T", default=15)
+        self.K = self.params.get_int("K", default=62)
+        self.epsilon = self.params.get_float("world_rep/epsilon", default=0.5)
+
+        self.scaled = self.dtype(self.K * self.T, 3)
+        self.bbox_map = self.dtype(self.K * self.T, 2, 4)
+        self.perm = rhctensor.byte_tensor()(self.K * self.T)
+
         # Ratio of car to extend in every direction
         # TODO: project car into its actual orientation
-        self.car_ratio = params.get_float("world_rep/car_ratio", default=3.2)  # was 3.2
-        self.car_length = params.get_float("world_rep/car_length", default=0.33)
+        self.car_ratio = self.params.get_float("world_rep/car_ratio", default=3.2)
+        self.car_length = self.params.get_float("world_rep/car_length", default=0.33)
         self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
 
         self.perm_reg = utils.load_permissible_region(self.params, self.map)
@@ -35,15 +44,6 @@ class Simple:
 
         self.dist_field[self.dist_field >= self.epsilon] = 0
         self.dist_field = 1 / (2 * self.epsilon) * (self.dist_field - self.epsilon) ** 2
-
-    def reset(self):
-        self.T = self.params.get_int("T", default=15)
-        self.K = self.params.get_int("K", default=62)
-        self.epsilon = self.params.get_float("world_rep/epsilon", default=0.5)
-
-        self.scaled = self.dtype(self.K * self.T, 3)
-        self.bbox_map = self.dtype(self.K * self.T, 2, 4)
-        self.perm = rhctensor.byte_tensor()(self.K * self.T)
 
     def collisions(self, poses):
         """
