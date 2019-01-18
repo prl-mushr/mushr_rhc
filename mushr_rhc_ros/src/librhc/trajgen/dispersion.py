@@ -1,5 +1,7 @@
-from itertools import product
 import torch
+import librhc.utils as utils
+
+from itertools import product
 from scipy.spatial.distance import directed_hausdorff
 
 
@@ -20,7 +22,7 @@ class Dispersion:
         self.T = self.params.get_int('T', default=15)
 
         # Number of seconds lookahead
-        time_horizon = self.params.get_float('time_horizon', default=3.0)
+        time_horizon = utils.get_time_horizon(self.params)
 
         # Time between steps
         dt = time_horizon / self.T
@@ -42,16 +44,13 @@ class Dispersion:
         step_size = (max_delta - min_delta) / (samples - 1)
         deltas = torch.arange(min_delta, max_delta + step_size, step_size)
 
-        # Numbeor of steps = time_horizon / dt
-        print "T: " + str(self.T)
-        print "time_horizon/dt: " + str(time_horizon / dt)
-        print "N_mother: " + str(N_mother)
-
         controls_per_branch = int(self.T / branching_factor)
 
-        print "controls_per_branch: " + str(controls_per_branch)
         assert self.T == time_horizon / dt
         assert self.T == controls_per_branch * branching_factor
+
+        # TODO: Have a cache system for these trajectories that would get
+        # loaded here instead of doing needless computation
 
         cartesian_prod = product(*[deltas for i in range(branching_factor)])
         prod = torch.Tensor(list(cartesian_prod))

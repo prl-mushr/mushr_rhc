@@ -4,7 +4,6 @@ import numpy as np
 import os
 import rhctensor
 import torch
-import md5
 
 
 def world2map(mapdata, poses, out=None):
@@ -63,7 +62,11 @@ def map2worldnp(mapdata, poses):
     poses[:, 2] += mapdata.angle
 
 
-def load_permissible_region(params, map_info):
+def load_permissible_region(params, map):
+    """
+        get_map is a function that lazily gets all the mapdata
+            * only use if map data is needed otherwise use cached data
+    """
     path = params.get_str('permissible_region_dir', default='~/permissible_region/')
     path = os.path.expanduser(path)
 
@@ -71,16 +74,18 @@ def load_permissible_region(params, map_info):
         print "Directory " + path + " doesn't exist"
         exit(1)
 
-    # Use MD5 has of map data to get a unique name
-    # print "".join(map(str, data))
-    name = map_info.data_md5
-    perm_reg_file = path + name
+    perm_reg_path = os.path.join(path, map.name)
+    if not os.path.isdir(perm_reg_path):
+        os.mkdir(perm_reg_path)
 
-    print "Occupancy grid file: " + perm_reg_file + '.npy'
-    if os.path.isfile(perm_reg_file + '.npy'):
-        pr = np.load(perm_reg_file + '.npy')
+    perm_reg_file = os.path.join(perm_reg_path, "perm_region.npy")
+
+    print "Occupancy grid file: " + perm_reg_file
+    if os.path.isfile(perm_reg_file):
+        pr = np.load(perm_reg_file)
     else:
-        array_255 = map_info.data.reshape((map_info.height, map_info.width))
+        map_data = map.data()
+        array_255 = map_data.reshape((map.height, map.width))
         pr = np.zeros_like(array_255, dtype=bool)
 
         # Numpy array of dimension (map_msg.info.height, map_msg.info.width),

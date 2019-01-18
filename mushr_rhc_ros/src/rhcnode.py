@@ -1,9 +1,10 @@
+import os
 import rospy
 import threading
 
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, MapMetaData
 from nav_msgs.srv import GetMap
 from std_msgs.msg import Empty
 from std_srvs.srv import Empty as SrvEmpty
@@ -52,12 +53,15 @@ class RHCNode:
 
         self.goal_event = threading.Event()
         self.reset_lock = threading.Lock()
+        self.map_metadata_event = threading.Event()
+        self.ready_event = threading.Event()
 
     def start(self, name):
         rospy.init_node(name, anonymous=True)  # Initialize the node
 
-        self.load_controller()
         self.setup_pub_sub()
+        self.load_controller()
+        self.ready_event.set()
 
         rate = rospy.Rate(50)
         self.inferred_pose = None
@@ -94,6 +98,9 @@ class RHCNode:
         rospy.Subscriber("/move_base_simple/goal",
                          PoseStamped, self.cb_goal, queue_size=1)
 
+        rospy.Subscriber("/map_metadata",
+                         MapMetaData, self.cb_map_metadata, queue_size=1)
+
         if rospy.get_param("~use_sim_pose", default=False):
             rospy.Subscriber("/sim_car_pose/pose",
                              PoseStamped, self.cb_pose, queue_size=10)
@@ -117,7 +124,7 @@ class RHCNode:
     def srv_reset(self, msg):
         rospy.logwarn("Resetting START")
         self.reset_lock.acquire()
-        self.rhctrl.reset()
+        self.load_controller()
         self.reset_lock.release()
         rospy.logwarn("Resetting END")
         return []
@@ -132,6 +139,7 @@ class RHCNode:
             msg.pose.position.y,
             utils.rosquaternion_to_angle(msg.pose.orientation)
         ])
+        self.ready_event.wait()
         self.rhctrl.set_goal(goal)
         print "goal set"
         self.goal_event.set()
@@ -157,32 +165,41 @@ class RHCNode:
         mname = self.params.get_str("model_name", default="kinematic")
         if mname not in motion_models:
             self.logger.fatal("model '{}' is not valid".format(mname))
+
         return motion_models[mname](self.params, self.logger, self.dtype)
 
     def get_trajgen(self, model):
         tgname = self.params.get_str("trajgen_name", default="tl")
         if tgname not in trajgens:
             self.logger.fatal("trajgen '{}' is not valid".format(tgname))
+
         return trajgens[tgname](self.params, self.logger, self.dtype, model)
 
-    def get_map(self):
-        srv_name = self.params.get_str("static_map", default="/static_map")
-        self.logger.info("Waiting for map service")
-        rospy.wait_for_service(srv_name)
-        self.logger.info("Map service started")
+    def cb_map_metadata(self, msg):
+        map_file = self.params.get_str("map_file", default="default", global_=True)
+        x, y, angle = utils.rospose_to_posetup(msg.origin)
 
-        map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
-        x, y, angle = utils.rospose_to_posetup(map_msg.info.origin)
-
-        return types.MapData(
-            resolution=map_msg.info.resolution,
+        name = os.path.splitext(os.path.basename(map_file))[0]
+        self.map_data = types.MapData(
+            name=name,
+            resolution=msg.resolution,
             origin_x=x,
             origin_y=y,
             orientation_angle=angle,
-            width=map_msg.info.width,
-            height=map_msg.info.height,
-            data=map_msg.data
+            width=msg.width,
+            height=msg.height,
+            get_map_data=self.get_map
         )
+        self.map_metadata_event.set()
+
+    def get_map(self):
+        srv_name = self.params.get_str("static_map", default="/static_map")
+        self.logger.debug("Waiting for map service")
+        rospy.wait_for_service(srv_name)
+        self.logger.debug("Map service started")
+
+        map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
+        return map_msg.data
 
     def get_cost_fn(self):
         cfname = self.params.get_str("cost_fn_name", default="waypoints")
@@ -193,16 +210,19 @@ class RHCNode:
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 
-        map = self.get_map()
-        wr = world_reps[wrname](self.params, self.logger, self.dtype, map)
+        self.logger.debug("Waiting for map metadata")
+        self.map_metadata_event.wait()
+        self.logger.debug("Recieved map metadata")
+
+        wr = world_reps[wrname](self.params, self.logger, self.dtype, self.map_data)
 
         vfname = self.params.get_str("value_fn_name", default="simpleknn")
         if vfname not in value_functions:
             self.logger.fatal("value_fn '{}' is not valid".format(vfname))
 
-        vf = value_functions[vfname](self.params, self.logger, self.dtype, map)
+        vf = value_functions[vfname](self.params, self.logger, self.dtype, self.map_data)
 
         return cost_functions[cfname](self.params,
                                       self.logger,
                                       self.dtype,
-                                      map, wr, vf)
+                                      self.map_data, wr, vf)

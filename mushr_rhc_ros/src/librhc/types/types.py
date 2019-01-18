@@ -1,16 +1,19 @@
 import numpy as np
-import md5
 
 
 class MapData:
-    def __init__(self, resolution, origin_x, origin_y, orientation_angle, width, height, data):
+    def __init__(self, name, resolution, origin_x, origin_y, orientation_angle, width, height, get_map_data):
+        self.name = name
         self.resolution = resolution
         self.origin_x, self.origin_y = origin_x, origin_y
         self.angle = orientation_angle
         self.angle_sin, self.angle_cos = np.sin(self.angle), np.cos(self.angle)
         self.width = width
         self.height = height
-        self.data = np.array(data)
+        self._data = None
+        self._get_map_data = get_map_data
 
-        datamd5 = md5.new("".join(map(str, self.data)))
-        self.data_md5 = datamd5.hexdigest()
+    def data(self):
+        if self._data is None:
+            self._data = np.array(self._get_map_data())
+        return self._data

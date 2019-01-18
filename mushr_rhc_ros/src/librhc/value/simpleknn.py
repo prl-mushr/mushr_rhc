@@ -75,9 +75,7 @@ class SimpleKNN:
 
         seq_x = np.arange(0, 1, density_x)
         seq_y = np.arange(0, 1, density_y)
-        seq = np.transpose(
-                [np.tile(seq_y, len(seq_x)), np.repeat(seq_x, len(seq_y))]
-                )
+        seq = np.transpose([np.tile(seq_y, len(seq_x)), np.repeat(seq_x, len(seq_y))])
 
         return [(int(s[0] * h), int(s[1] * w)) for s in seq]
 

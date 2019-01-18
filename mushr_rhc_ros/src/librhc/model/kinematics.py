@@ -1,3 +1,6 @@
+import librhc.utils as utils
+
+
 class Kinematics:
     EPSILON = 1e-5
     NPOS = 3
@@ -16,7 +19,7 @@ class Kinematics:
         self.K = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
 
-        time_horizon = self.params.get_float("time_horizon", default=3.0)
+        time_horizon = utils.get_time_horizon(self.params)
         T = self.params.get_int('T', default=15)
         self.dt = time_horizon / T
 

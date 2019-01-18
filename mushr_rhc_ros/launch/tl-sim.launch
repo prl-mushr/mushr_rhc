@@ -1,10 +1,8 @@
 <launch>
     <!-- TL -->
-    <arg name="tg" default="dispersion" />
+    <arg name="tg" default="tl" />
 
     <arg name="permissible_region_dir" default="~/permissible_region/" />
-    <arg name="desired_speed" default="4.0" />
-
     <!-- 
     <include file="$(find mushr_rhc_ros)/launch/localize.launch"/>
     -->
@@ -12,7 +10,6 @@
     <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <param name="trajgen/desired_speed" value="$(arg desired_speed)" />
         <param name="permissible_region_dir" value="$(arg permissible_region_dir)" />
 
         <param name="use_sim_pose" value="1" />
