@@ -1,4 +1,5 @@
 import numpy as np
+import threading
 
 
 class MPC:
@@ -28,7 +29,9 @@ class MPC:
         th_thresh = self.params.get_float("theta_threshold", default=np.pi)
         self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
 
-        self.goal = None
+        self.goal_lock = threading.Lock()
+        with self.goal_lock:
+            self.goal = None
 
         if not init:
             self.trajgen.reset()
@@ -42,7 +45,7 @@ class MPC:
         """
         assert state.size() == (3,)
 
-        if self.goal is None:
+        if not self.has_goal():
             return None
 
         if self.at_goal(state):
@@ -65,12 +68,19 @@ class MPC:
         return result
 
     def set_goal(self, goal):
-        assert goal is not None
-        self.goal = goal
-        self.cost.value_fn.set_goal(goal)
+        assert goal.size() == (3,)
+
+        with self.goal_lock:
+            self.goal = goal
+            self.cost.value_fn.set_goal(goal)
 
     def at_goal(self, state):
-        if self.goal is None:
-            return False
+        with self.goal_lock:
+            if self.goal is None:
+                return False
         dist = self.goal.sub(state).abs_()
         return dist.lt(self.goal_threshold).min() == 1
+
+    def has_goal(self):
+        with self.goal_lock:
+            return self.goal is not None
