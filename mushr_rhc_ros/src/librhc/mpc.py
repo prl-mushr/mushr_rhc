@@ -1,4 +1,3 @@
-import numpy as np
 import threading
 
 
@@ -25,9 +24,8 @@ class MPC:
         # Rollouts buffer, the main engine of our computation
         self.rollouts = self.dtype(self.K, self.T, self.NPOS)
 
-        xy_thresh = self.params.get_float("xy_threshold", default=0.8)
-        th_thresh = self.params.get_float("theta_threshold", default=np.pi)
-        self.goal_threshold = self.dtype([xy_thresh, xy_thresh, th_thresh])
+        xy_thresh = self.params.get_float("xy_threshold", default=1.5)
+        self.goal_threshold = self.dtype([xy_thresh, xy_thresh])
 
         self.goal_lock = threading.Lock()
         with self.goal_lock:
@@ -78,7 +76,7 @@ class MPC:
         with self.goal_lock:
             if self.goal is None:
                 return False
-        dist = self.goal.sub(state).abs_()
+        dist = self.goal[:2].sub(state[:2]).abs_()
         return dist.lt(self.goal_threshold).min() == 1
 
     def has_goal(self):

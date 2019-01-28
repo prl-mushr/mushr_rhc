@@ -94,7 +94,9 @@ class RHCNode:
                                  m, tg, cf)
 
     def setup_pub_sub(self):
-        rospy.Service("~reset", SrvEmpty, self.srv_reset)
+        rospy.Service("~reset/soft", SrvEmpty, self.srv_reset_soft)
+        rospy.Service("~reset/hard", SrvEmpty, self.srv_reset_hard)
+
         rospy.Subscriber("/move_base_simple/goal",
                          PoseStamped, self.cb_goal, queue_size=1)
 
@@ -121,12 +123,27 @@ class RHCNode:
         self.expr_at_goal = rospy.Publisher("/experiments/finished",
                                             Empty, queue_size=1)
 
-    def srv_reset(self, msg):
-        rospy.logwarn("Resetting START")
+    def srv_reset_hard(self, msg):
+        '''
+        Hard reset does a complete reload of the controller
+        '''
+        rospy.loginfo("Start hard reset")
         self.reset_lock.acquire()
         self.load_controller()
         self.reset_lock.release()
-        rospy.logwarn("Resetting END")
+        rospy.loginfo("End hard reset")
+        return []
+
+    def srv_reset_soft(self, msg):
+        '''
+        Soft reset only resets soft state (like tensors). No dependencies or maps
+        are reloaded
+        '''
+        rospy.loginfo("Start soft reset")
+        self.reset_lock.acquire()
+        self.rhctrl.reset()
+        self.reset_lock.release()
+        rospy.loginfo("End soft reset")
         return []
 
     def cb_odom(self, msg):
@@ -176,10 +193,15 @@ class RHCNode:
         return trajgens[tgname](self.params, self.logger, self.dtype, model)
 
     def cb_map_metadata(self, msg):
-        map_file = self.params.get_str("map_file", default="default", global_=True)
-        x, y, angle = utils.rospose_to_posetup(msg.origin)
-
+        default_map_name = "default"
+        map_file = self.params.get_str("map_file", default=default_map_name, global_=True)
         name = os.path.splitext(os.path.basename(map_file))[0]
+
+        if name is default_map_name:
+            rospy.logwarn("Default map name being used, will be corrupted on map change. " +
+                          "To fix, set '/map_file' parameter with map_file location")
+
+        x, y, angle = utils.rospose_to_posetup(msg.origin)
         self.map_data = types.MapData(
             name=name,
             resolution=msg.resolution,

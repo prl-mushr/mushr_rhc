@@ -19,6 +19,7 @@ class Simple:
         self.logger = logger
         self.dtype = dtype
         self.map = map
+        self.perm_reg = utils.load_permissible_region(self.params, self.map)
 
         self.reset()
 
@@ -36,8 +37,6 @@ class Simple:
         self.car_ratio = self.params.get_float("world_rep/car_ratio", default=3.2)
         self.car_length = self.params.get_float("world_rep/car_length", default=0.33)
         self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
-
-        self.perm_reg = utils.load_permissible_region(self.params, self.map)
 
         self.dist_field = ndimage.distance_transform_edt(
                             np.logical_not(self.perm_reg.cpu().numpy()))
