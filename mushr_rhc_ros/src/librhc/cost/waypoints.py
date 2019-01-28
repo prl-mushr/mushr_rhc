@@ -1,3 +1,5 @@
+import torch
+
 class Waypoints:
     NPOS = 3  # x, y, theta
 
@@ -15,11 +17,16 @@ class Waypoints:
     def reset(self):
         self.T = self.params.get_int("T", default=15)
         self.K = self.params.get_int("K", default=62)
-        self.dist_w = self.params.get_float("cost_fn/dist_w", default=0.5)
-        self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=10)
+        self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
+        self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=100.0)
+        self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
+        self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.08)
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost",
-                                                 default=1000.0)
+                                                 default=100.0)
 
+        self.discount = self.dtype(self.T-1)
+        self.discount[:] = 1 + self.smoothing_discount_rate
+        self.discount.pow_(torch.arange(0,self.T-1).type(self.dtype) * -1)
         self.world_rep.reset()
 
     def apply(self, poses, goal):
@@ -35,14 +42,6 @@ class Waypoints:
 
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
-        # Use the x and y coordinates to compute the distance
-
-        # uses all the distances, not just terminal
-        # dists_raw = all_poses[:, :2].sub(goal[:2])
-        # dists = dists_raw.view(self.K,
-        #                        self.T,
-        #                        self.NPOS).norm(p=2, dim=1).mul_(10)
-
         # use terminal distance (K, tensor)
         dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(self.dist_w)
         cost2go = self.value_fn.get_value(poses[:, self.T-1, :]).mul(self.cost2go_w)
@@ -50,21 +49,22 @@ class Waypoints:
         # get all collisions (K, T, tensor)
         collisions = self.world_rep.check_collision_in_map(
                         all_poses).view(self.K, self.T)
-        # collisions = \
-        #        self.world_rep.collisions(
-        #           poses[:,self.T-1,:].view(self.K,self.NPOS)).view(self.K, 1)
+
         obstacle_distances = self.world_rep.distances(
                                 all_poses).view(self.K, self.T)
 
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
-        obstacle_dist_cost = obstacle_distances.sum(dim=1)
-        # .exponential_().add(1).pow(-1).mul(20)
-        result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost)
+        obstacle_dist_cost = obstacle_distances[:, self.T-1].mul(self.obs_dist_w)
 
+        # reward smoothness by taking the integral over the rate of change in poses,
+        # with time-based discounting factor
+        smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
+        result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
+
+        '''
         import librhc.rosviz as rosviz
         rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
 
-        '''
         import sys
         sys.stderr.write("\x1b[2J\x1b[H")
         print "Dists: "
