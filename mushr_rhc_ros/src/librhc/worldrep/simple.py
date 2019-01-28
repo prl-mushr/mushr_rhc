@@ -42,8 +42,9 @@ class Simple:
         self.dist_field = ndimage.distance_transform_edt(
                             np.logical_not(self.perm_reg.cpu().numpy()))
 
-        self.dist_field[self.dist_field >= self.epsilon] = 0
-        self.dist_field = 1 / (2 * self.epsilon) * (self.dist_field - self.epsilon) ** 2
+        self.dist_field *= self.map.resolution
+        self.dist_field[self.dist_field <= self.epsilon] = (1 / (2 * self.epsilon)) * (self.dist_field[self.dist_field <= self.epsilon] - self.epsilon) ** 2
+        self.dist_field[self.dist_field > self.epsilon] = 0
 
     def collisions(self, poses):
         """
