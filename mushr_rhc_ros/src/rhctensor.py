@@ -11,4 +11,4 @@ def float_tensor():
 
 
 def _use_cuda():
-    return int(os.getenv("RHC_USE_CUDA", 1)) == 1 and torch.cuda.is_available()
+    return int(os.getenv("RHC_USE_CUDA", 0)) == 1 and torch.cuda.is_available()
