@@ -1,5 +1,6 @@
 import torch
 
+
 class Waypoints:
     NPOS = 3  # x, y, theta
 
@@ -26,7 +27,7 @@ class Waypoints:
 
         self.discount = self.dtype(self.T-1)
         self.discount[:] = 1 + self.smoothing_discount_rate
-        self.discount.pow_(torch.arange(0,self.T-1).type(self.dtype) * -1)
+        self.discount.pow_(torch.arange(0, self.T-1).type(self.dtype) * -1)
         self.world_rep.reset()
 
     def apply(self, poses, goal):
@@ -61,10 +62,10 @@ class Waypoints:
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
 
-        '''
         import librhc.rosviz as rosviz
         rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
 
+        '''
         import sys
         sys.stderr.write("\x1b[2J\x1b[H")
         print "Dists: "

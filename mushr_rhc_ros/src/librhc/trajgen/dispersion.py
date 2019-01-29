@@ -1,5 +1,6 @@
 import torch
 import librhc.utils as utils
+import os
 
 from itertools import product
 from scipy.spatial.distance import directed_hausdorff
@@ -8,6 +9,8 @@ from scipy.spatial.distance import directed_hausdorff
 class Dispersion:
     NCTRL = 2
     NPOS = 3
+    # Needed so the range doesn't cut out the max delta
+    DELTAS_EPSILON = 0.0001
 
     def __init__(self, params, logger, dtype, motion_model):
         self.logger = logger
@@ -20,12 +23,6 @@ class Dispersion:
     def reset(self):
         self.K = self.params.get_int('K', default=62)
         self.T = self.params.get_int('T', default=15)
-
-        # Number of seconds lookahead
-        time_horizon = utils.get_time_horizon(self.params)
-
-        # Time between steps
-        dt = time_horizon / self.T
 
         # Number of resamples in control space
         branching_factor = self.params.get_int('trajgen/dispersion/branching_factor', default=3)
@@ -42,40 +39,53 @@ class Dispersion:
 
         # Sample control space
         step_size = (max_delta - min_delta) / (samples - 1)
-        deltas = torch.arange(min_delta, max_delta + step_size, step_size)
+        deltas = torch.arange(min_delta, max_delta + self.DELTAS_EPSILON, step_size)
 
         controls_per_branch = int(self.T / branching_factor)
 
-        assert self.T == time_horizon / dt
-        assert self.T == controls_per_branch * branching_factor
+        assert deltas.size() == (samples,)
+        assert self.T % branching_factor == 0
 
         # TODO: Have a cache system for these trajectories that would get
         # loaded here instead of doing needless computation
+        dispersion_dir = utils.get_cache_dir(self.params, os.path.join('trajgen', 'dispersion'))
+        dispersion_name = '-'.join(map(str, [
+                    self.K, self.T, branching_factor, samples, max_delta, min_delta, desired_speed
+                ]))
+        dispersion_name = dispersion_name + '.pt'
+        dispersion_path = os.path.join(dispersion_dir, dispersion_name)
 
-        cartesian_prod = product(*[deltas for i in range(branching_factor)])
-        prod = torch.Tensor(list(cartesian_prod))
-        ms_deltas = prod.view(-1, 1).repeat(
-                1, controls_per_branch).view(N_mother, self.T)
+        if not os.path.isdir(dispersion_dir):
+            os.mkdirs(dispersion_dir)
 
-        # Add zero control
-        zero_ctrl = self.dtype(self.T,).zero_()
-        zero_idx = -1
-        for i, c in enumerate(ms_deltas):
-            if torch.equal(c, zero_ctrl):
-                zero_idx = i
-        if zero_idx >= 0:
-            ms_ctrls = self.dtype(N_mother, self.T, self.NCTRL)
-            ms_ctrls[:, :, 0] = desired_speed
-            ms_ctrls[:, :, 1] = ms_deltas
+        if os.path.isfile(dispersion_path):
+            self.logger.debug("Loading dispersion from cache: " + dispersion_path)
+            self.ctrls = torch.load(dispersion_path)
         else:
-            zero_idx = 0
-            ms_ctrls = self.dtype(N_mother + 1, self.T, self.NCTRL)
-            ms_ctrls[:, :, 0] = desired_speed
-            ms_ctrls[1:, :, 1] = ms_deltas
-            ms_ctrls[0, :, 1] = 0
+            cartesian_prod = product(*[deltas for i in range(branching_factor)])
+            prod = self.dtype(list(cartesian_prod))
+            ms_deltas = prod.view(-1, 1).repeat(1, controls_per_branch).view(N_mother, self.T)
 
-        ms_poses = self._rollout_ms(ms_ctrls)
-        self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            # Add zero control
+            zero_ctrl = self.dtype(self.T,).zero_()
+            zero_idx = -1
+            for i, c in enumerate(ms_deltas):
+                if torch.equal(c, zero_ctrl):
+                    zero_idx = i
+            if zero_idx >= 0:
+                ms_ctrls = self.dtype(N_mother, self.T, self.NCTRL)
+                ms_ctrls[:, :, 0] = desired_speed
+                ms_ctrls[:, :, 1] = ms_deltas
+            else:
+                zero_idx = 0
+                ms_ctrls = self.dtype(N_mother + 1, self.T, self.NCTRL)
+                ms_ctrls[:, :, 0] = desired_speed
+                ms_ctrls[1:, :, 1] = ms_deltas
+                ms_ctrls[0, :, 1] = 0
+
+            ms_poses = self._rollout_ms(ms_ctrls)
+            self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            torch.save(self.ctrls, dispersion_path)
 
     def _rollout_ms(self, ms_ctrls):
         # rollout the mother set

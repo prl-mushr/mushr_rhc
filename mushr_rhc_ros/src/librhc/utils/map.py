@@ -4,6 +4,7 @@ import numpy as np
 import os
 import rhctensor
 import torch
+import cache
 
 
 def world2map(mapdata, poses, out=None):
@@ -67,20 +68,9 @@ def load_permissible_region(params, map):
         get_map is a function that lazily gets all the mapdata
             * only use if map data is needed otherwise use cached data
     """
-    path = params.get_str('permissible_region_dir', default='~/permissible_region/')
-    path = os.path.expanduser(path)
+    path = cache.get_cache_map_dir(params, map)
+    perm_reg_file = os.path.join(path, "perm_region.npy")
 
-    if not os.path.isdir(path):
-        print "Directory " + path + " doesn't exist"
-        exit(1)
-
-    perm_reg_path = os.path.join(path, map.name)
-    if not os.path.isdir(perm_reg_path):
-        os.mkdir(perm_reg_path)
-
-    perm_reg_file = os.path.join(perm_reg_path, "perm_region.npy")
-
-    print "Occupancy grid file: " + perm_reg_file
     if os.path.isfile(perm_reg_file):
         pr = np.load(perm_reg_file)
     else:

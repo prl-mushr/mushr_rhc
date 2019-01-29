@@ -1,9 +1,11 @@
-import numpy as np
-import torch
+import librhc.utils as utils
 import networkx as nx
+import numpy as np
+import os
+import torch
+
 from scipy.interpolate import interp1d
 from sklearn.neighbors import NearestNeighbors
-import librhc.utils as utils
 from threading import Event
 
 
@@ -54,12 +56,17 @@ class SimpleKNN:
         self.goal_i = None
         self.goal_event = Event()
 
-        print "RESOLUTION: " + str(self.map.resolution)
-
         self.perm_region = utils.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
-        self.points = self.iterative_sample_seq(h, w, 3000, self.halton_sampler)
+        nhalton = self.params.get_int("value/simpleknn/nhalton", defualt=3000)
+        map_cache = utils.get_cache_map_dir(self.params, self.map)
+        halton_pts_file = os.path.join(map_cache, "halton-{}.npy".format(nhalton))
+        if os.path.isfile(halton_pts_file):
+            self.points = np.load(halton_pts_file)
+        else:
+            self.points = self.iterative_sample_seq(h, w, nhalton, self.halton_sampler)
+            np.save(halton_pts_file, self.points)
 
     def halton_sampler(self, h, w, n):
         # re-sample halton with more points
