@@ -62,10 +62,10 @@ class Waypoints:
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
 
+        '''
         import librhc.rosviz as rosviz
         rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
 
-        '''
         import sys
         sys.stderr.write("\x1b[2J\x1b[H")
         print "Dists: "

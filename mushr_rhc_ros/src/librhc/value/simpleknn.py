@@ -59,7 +59,7 @@ class SimpleKNN:
         self.perm_region = utils.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
-        nhalton = self.params.get_int("value/simpleknn/nhalton", defualt=3000)
+        nhalton = self.params.get_int("value/simpleknn/nhalton", default=3000)
         map_cache = utils.get_cache_map_dir(self.params, self.map)
         halton_pts_file = os.path.join(map_cache, "halton-{}.npy".format(nhalton))
         if os.path.isfile(halton_pts_file):
