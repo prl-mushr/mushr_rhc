@@ -45,9 +45,6 @@ def halton_sequence(size, dim):
 
 class SimpleKNN:
     def __init__(self, params, logger, dtype, map):
-        """
-            permissible_region (width x height tensor)
-        """
         self.params = params
         self.logger = logger
         self.map = map
@@ -65,28 +62,16 @@ class SimpleKNN:
         if os.path.isfile(halton_pts_file):
             self.points = np.load(halton_pts_file)
         else:
-            self.points = self.iterative_sample_seq(h, w, nhalton, self.halton_sampler)
+            self.points = self._iterative_sample_seq(h, w, nhalton, self._halton_sampler)
             np.save(halton_pts_file, self.points)
 
-    def halton_sampler(self, h, w, n):
+    def _halton_sampler(self, h, w, n):
         # re-sample halton with more points
         seq = halton_sequence(n, 2)
         # get number of points in available area
         return [(int(s[0] * h), int(s[1] * w)) for s in zip(seq[0], seq[1])]
 
-    def grid_sampler(self, h, w, n):
-        num_points_x = np.sqrt(n)
-        num_points_y = np.sqrt(n)
-        density_x = 1.0 / num_points_x
-        density_y = 1.0 / num_points_y
-
-        seq_x = np.arange(0, 1, density_x)
-        seq_y = np.arange(0, 1, density_y)
-        seq = np.transpose([np.tile(seq_y, len(seq_x)), np.repeat(seq_x, len(seq_y))])
-
-        return [(int(s[0] * h), int(s[1] * w)) for s in seq]
-
-    def iterative_sample_seq(self, h, w, threshold=300, sampler=None):
+    def _iterative_sample_seq(self, h, w, threshold=300, sampler=None):
         assert sampler is not None
 
         n = threshold * 5
@@ -107,20 +92,28 @@ class SimpleKNN:
         return np.array(valid)
 
     def set_goal(self, goal, n_neighbors=6, k=3):
-        self.goal_event.clear()
-        # Add goal to self.points
+        """
+        Args:
+        goal [(3,) tensor] -- Goal in "world" coordinates
+        Return:
+        [boolean] -- Whether the goal was successfully set.
+        """
         assert goal.size() == (3,)
+        self.goal_event.clear()
 
+        # Convert "world" goal to "map" coordinates
         goal = goal.unsqueeze(0)
         map_goal = self.dtype(goal.size())
         utils.world2map(self.map, goal, out=map_goal)
 
+        # Add goal to points on the map so we can create a single source shortest path from it
         map_goal = np.array([[map_goal[0, 1], map_goal[0, 0]]])
         pts_w_goal = np.concatenate((self.points, map_goal), axis=0)
+
         self.goal_i = pts_w_goal.shape[0]-1
 
-        nbrs = NearestNeighbors(n_neighbors=n_neighbors,
-                                algorithm='ball_tree').fit(pts_w_goal)
+        # Create a single source shortest path
+        nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(pts_w_goal)
         distances, indices = nbrs.kneighbors(pts_w_goal)
         elist = []
         for idx_set in indices:
@@ -128,26 +121,30 @@ class SimpleKNN:
             start = pts_w_goal[starti]
             for n in idx_set[1:]:
                 neigh = pts_w_goal[n]
-                dist = self.eval_edge(start, neigh)
+                dist = self._eval_edge(start, neigh)
                 if dist > 0:
                     elist.append((starti, n, dist))
 
         G = nx.Graph()
         G.add_weighted_edges_from(elist)
 
-        length_to_goal = nx.single_source_dijkstra_path_length(G, self.goal_i)
+        try:
+            length_to_goal = nx.single_source_dijkstra_path_length(G, self.goal_i)
+        except nx.NodeNotFound:
+            # There was no paths to this point
+            return False
 
         self.reachable_pts = pts_w_goal[length_to_goal.keys()]
         self.reachable_nodes = length_to_goal.keys()
         self.reachable_dst = length_to_goal.values()
 
-        self.viz_halton()
+        self._viz_halton()
 
         self.nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(self.reachable_pts)
         self.goal_event.set()
-        print "Complete setting goal"
+        return True
 
-    def viz_halton(self):
+    def _viz_halton(self):
         import rospy
         from visualization_msgs.msg import Marker
         from geometry_msgs.msg import Point
@@ -188,7 +185,7 @@ class SimpleKNN:
         pub = rospy.Publisher("/markers", Marker, queue_size=100)
         pub.publish(m)
 
-    def eval_edge(self, src, dst):
+    def _eval_edge(self, src, dst):
         # moves along line between src and dst and samples points
         # in the line,
         # return l2 norm if valid and -1 otherwise
@@ -204,23 +201,19 @@ class SimpleKNN:
 
     def get_value(self, input_poses, resolution=None):
         """
-        Arguments:
-            input_poses (K, NPOS tensor) Terminal poses for rollouts to be evaluated
-        Returns:
-            values (K, tensor) Cost to go terminal values
+        *NOTE* This function does not take angle of car into account.
 
-        *Note* This function does not take theta_i into account.
+        Args:
+        input_poses [(K, NPOS) tensor] -- Terminal poses for rollouts to be evaluated in "world" coordinates
+
+        Returns:
+        [(K,) tensor] -  Cost to go terminal values
         """
 
         if not self.goal_event.is_set():
             return torch.zeros(len(input_poses)).type(self.dtype)
 
-        if self.goal_i is None:
-            print "no goal"
-            return torch.zeros(len(input_poses)).type(self.dtype)
-
         if self.nbrs is None:
-            print "nbrs none"
             return torch.zeros(len(input_poses)).type(self.dtype)
 
         input_points = input_poses.clone().cpu().numpy()

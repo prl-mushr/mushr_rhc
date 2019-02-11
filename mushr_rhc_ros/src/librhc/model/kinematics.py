@@ -3,6 +3,7 @@ import librhc.utils as utils
 
 class Kinematics:
     EPSILON = 1e-5
+    NCTRL = 2
     NPOS = 3
 
     def __init__(self, params, logger, dtype):
@@ -16,6 +17,12 @@ class Kinematics:
         self.set_k(self.params.get_int("K", default=62))
 
     def set_k(self, k):
+        """
+        In some instances the internal buffer size needs to be changed. This easily facilitates this change
+
+        Args:
+        k [int] -- Number of rollouts
+        """
         self.K = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
 
@@ -33,13 +40,13 @@ class Kinematics:
     def apply(self, pose, ctrl):
         '''
         Args:
-          pose (K, NPOS tensor): The current position
-          ctrl (K, NCTRL tensor): Control to apply to the current position
+        pose [(K, NPOS) tensor] -- The current position in "world" coordinates
+        ctrl [(K, NCTRL) tensor] -- Control to apply to the current position
         Return:
-          (K, NCTRL tensor) The next position given the current control
+        [(K, NCTRL) tensor] The next position given the current control
         '''
-        assert pose.size() == (self.K, 3)
-        assert ctrl.size() == (self.K, 2)
+        assert pose.size() == (self.K, self.NPOS)
+        assert ctrl.size() == (self.K, self.NCTRL)
 
         self.sin2beta.copy_(ctrl[:, 1]).tan_().mul_(0.5).atan_().mul_(2.0).sin_().add_(self.EPSILON)
 

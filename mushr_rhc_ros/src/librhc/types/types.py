@@ -14,6 +14,6 @@ class MapData:
         self._get_map_data = get_map_data
 
     def data(self):
-        if self._data is None:
+        if not self._data:
             self._data = np.array(self._get_map_data())
         return self._data

@@ -9,7 +9,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 _traj_pub = rospy.Publisher("/trajs_array", MarkerArray, queue_size=100)
 
 
-def viz_paths_cmap(poses, costs, cmap='plasma', scale=.03):
+def viz_paths_cmap(poses, costs, ns="paths", cmap='plasma', scale=.03):
     max_c = torch.max(costs)
     min_c = torch.min(costs)
 
@@ -25,10 +25,10 @@ def viz_paths_cmap(poses, costs, cmap='plasma', scale=.03):
             a = col[3]
         return r, g, b, a
 
-    return viz_paths(poses, costs, colorfn, scale)
+    return viz_paths(poses, costs, colorfn, ns, scale)
 
 
-def viz_paths(poses, costs, colorfn, scale=.03):
+def viz_paths(poses, costs, colorfn, ns="paths", scale=.03):
     """
         poses should be an array of trajectories to plot in rviz
         costs should have the same dimensionality as poses.size()[0]
@@ -42,7 +42,7 @@ def viz_paths(poses, costs, colorfn, scale=.03):
         m = Marker()
         m.header.frame_id = "map"
         m.header.stamp = rospy.Time.now()
-        m.ns = "paths"
+        m.ns = ns
         m.id = i
         m.type = m.LINE_STRIP
         m.action = m.ADD

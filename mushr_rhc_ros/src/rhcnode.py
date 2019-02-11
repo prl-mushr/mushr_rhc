@@ -1,9 +1,10 @@
 import os
 import rospy
 import threading
+import cProfile
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, MapMetaData
 from nav_msgs.srv import GetMap
 from std_msgs.msg import Empty
@@ -44,44 +45,78 @@ world_reps = {
 
 
 class RHCNode:
-    def __init__(self, dtype):
+    def __init__(self, dtype, name):
         self.dtype = dtype
 
         self.params = parameters.RosParams()
         self.logger = logger.RosLog()
         self.ackermann_msg_id = 0
 
-        self.goal_event = threading.Event()
         self.reset_lock = threading.Lock()
+        self.inferred_pose_lock = threading.Lock()
+        self._inferred_pose = None
+
+        self.goal_event = threading.Event()
         self.map_metadata_event = threading.Event()
         self.ready_event = threading.Event()
+        self.events = [self.goal_event, self.map_metadata_event, self.ready_event]
+        self.run = True
 
-    def start(self, name):
-        rospy.init_node(name, anonymous=True)  # Initialize the node
+        rospy.init_node(name, anonymous=True, disable_signals=True)  # Initialize the node
 
+        self.do_profile = self.params.get_bool("profile", default=False)
+
+    def start_profile(self):
+        if self.do_profile:
+            self.logger.warn("Running with profiling")
+            self.pr = cProfile.Profile()
+            self.pr.enable()
+
+    def end_profile(self):
+        if self.do_profile:
+            self.pr.disable()
+            self.pr.dump_stats(os.path.expanduser('~/mushr_rhc_stats.prof'))
+
+    def start(self):
+        self.logger.info("Starting RHController")
+        self.start_profile()
         self.setup_pub_sub()
         self.load_controller()
+
         self.ready_event.set()
 
         rate = rospy.Rate(50)
-        self.inferred_pose = None
-        print "Initialized"
+        self.logger.info("Initialized")
 
-        while not rospy.is_shutdown():
-            self.goal_event.wait()
-            self.reset_lock.acquire()
-            ip = self.inferred_pose
-            if ip is not None:
-                next_ctrl = self.rhctrl.step(ip)
-                if next_ctrl is not None:
-                    self.publish_ctrl(next_ctrl)
-                # For experiments. If the car is at the goal, notify the
-                # experiment tool
-                if self.rhctrl.at_goal(ip):
-                    self.expr_at_goal.publish(Empty())
-                    self.goal_event.clear()
-            self.reset_lock.release()
+        while not rospy.is_shutdown() and self.run:
+            next_ctrl = self.run_loop(self.inferred_pose())
+
+            if next_ctrl is None:
+                continue
+
+            self.publish_ctrl(next_ctrl)
+            # For experiments. If the car is at the goal, notify the
+            # experiment tool
+            if self.rhctrl.at_goal(self.inferred_pose()):
+                self.expr_at_goal.publish(Empty())
+                self.goal_event.clear()
             rate.sleep()
+
+        self.end_profile()
+
+    def run_loop(self, ip):
+        self.goal_event.wait()
+        if rospy.is_shutdown():
+            return None
+        with self.reset_lock:
+            if ip is not None:
+                return self.rhctrl.step(ip)
+
+    def shutdown(self, signum, frame):
+        rospy.signal_shutdown("SIGINT recieved")
+        for ev in self.events:
+            ev.set()
+        self.run = False
 
     def load_controller(self):
         m = self.get_model()
@@ -106,6 +141,10 @@ class RHCNode:
         if rospy.get_param("~use_sim_pose", default=False):
             rospy.Subscriber("/sim_car_pose/pose",
                              PoseStamped, self.cb_pose, queue_size=10)
+
+        if rospy.get_param("~show_rollout", default=False):
+            rospy.Subscriber("/initialpose",
+                             PoseWithCovarianceStamped, self.cb_initialpose)
 
         if rospy.get_param("~use_odom_pose", default=True):
             rospy.Subscriber("/pf/pose/odom",
@@ -147,26 +186,37 @@ class RHCNode:
         return []
 
     def cb_odom(self, msg):
-        self.inferred_pose = \
-            self.dtype(utils.rospose_to_posetup(msg.pose.pose))
+        self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose.pose)))
 
     def cb_goal(self, msg):
-        goal = self.dtype([
-            msg.pose.position.x,
-            msg.pose.position.y,
-            utils.rosquaternion_to_angle(msg.pose.orientation)
-        ])
+        goal = self.dtype(utils.rospose_to_posetup(msg.pose))
         self.ready_event.wait()
-        self.rhctrl.set_goal(goal)
-        print "goal set"
+        if not self.rhctrl.set_goal(goal):
+            self.logger.err("That goal is unreachable, please choose another")
+            return
+        else:
+            self.logger.info("Goal set")
         self.goal_event.set()
 
     def cb_pose(self, msg):
-        self.inferred_pose = self.dtype([
-            msg.pose.position.x,
-            msg.pose.position.y,
-            utils.rosquaternion_to_angle(msg.pose.orientation)
-        ])
+        self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
+        # self.set_inferred_pose(self.dtype([
+        #     msg.pose.position.x,
+        #     msg.pose.position.y,
+        #     utils.rosquaternion_to_angle(msg.pose.orientation)
+        # ]))
+
+    def cb_initialpose(self, msg):
+        ip = self.dtype(self.dtype(utils.rospose_to_posetup(msg.pose.pose)))
+        # ip = self.dtype([
+        #     msg.pose.pose.position.x,
+        #     msg.pose.pose.position.y,
+        #     utils.rosquaternion_to_angle(msg.pose.pose.orientation)
+        # ])
+
+        rospy.set_param('~viz_cost_fn', True)
+        self.run_loop(ip)
+        rospy.delete_param('~viz_cost_fn')
 
     def publish_ctrl(self, ctrl):
         assert ctrl.size() == (2,)
@@ -177,6 +227,14 @@ class RHCNode:
         ctrlmsg.drive.steering_angle = ctrl[1]
         self.rp_ctrls.publish(ctrlmsg)
         self.ackermann_msg_id += 1
+
+    def set_inferred_pose(self, ip):
+        with self.inferred_pose_lock:
+            self._inferred_pose = ip
+
+    def inferred_pose(self):
+        with self.inferred_pose_lock:
+            return self._inferred_pose
 
     def get_model(self):
         mname = self.params.get_str("model_name", default="kinematic")
