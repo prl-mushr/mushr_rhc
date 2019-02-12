@@ -32,11 +32,12 @@ class Waypoints:
 
     def apply(self, poses, goal):
         """
-        Arguments:
-            poses (K, T, 3 tensor): Roll out of T positions
-            goal  (3, tensor): Goal position
+        Args:
+        poses [(K, T, 3) tensor] -- Rollout of T positions
+        goal  [(3,) tensor]: Goal position in "world" mode
+
         Returns:
-            (K, tensor) of costs for each path
+        [(K,) tensor] costs for each K paths
         """
         assert poses.size() == (self.K, self.T, self.NPOS)
         assert goal.size() == (self.NPOS,)
@@ -62,23 +63,13 @@ class Waypoints:
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
 
-        '''
-        import librhc.rosviz as rosviz
-        rosviz.viz_paths_cmap(poses, result, cmap='coolwarm')
-
-        import sys
-        sys.stderr.write("\x1b[2J\x1b[H")
-        print "Dists: "
-        print str(dists)
-        print "Cost2Go: "
-        print str(cost2go)
-        print "Collisions: "
-        print str(collision_cost)
-        print "Obstacle Dist Cost: "
-        print str(obstacle_dist_cost)
-        print "Results: "
-        print str(result)
-        raw_input("Hit enter:")
-        '''
+        if self.params.get_bool("viz_cost_fn", False):
+            import librhc.rosviz as rosviz
+            rosviz.viz_paths_cmap(poses, result, ns="final_result", cmap='coolwarm')
+            rosviz.viz_paths_cmap(poses, dists, ns="dists", cmap='coolwarm')
+            rosviz.viz_paths_cmap(poses, cost2go, ns="cost2go", cmap='coolwarm')
+            rosviz.viz_paths_cmap(poses, collision_cost, ns="collision_cost", cmap='coolwarm')
+            rosviz.viz_paths_cmap(poses, obstacle_dist_cost, ns="obstacle_dist_cost", cmap='coolwarm')
+            rosviz.viz_paths_cmap(poses, smoothness, ns="smoothness", cmap='coolwarm')
 
         return result

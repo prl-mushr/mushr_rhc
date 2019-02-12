@@ -38,11 +38,11 @@ class Simple:
         self.car_length = self.params.get_float("world_rep/car_length", default=0.33)
         self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
 
-        self.dist_field = ndimage.distance_transform_edt(
-                            np.logical_not(self.perm_reg.cpu().numpy()))
+        self.dist_field = ndimage.distance_transform_edt(np.logical_not(self.perm_reg.cpu().numpy()))
 
         self.dist_field *= self.map.resolution
-        self.dist_field[self.dist_field <= self.epsilon] = (1 / (2 * self.epsilon)) * (self.dist_field[self.dist_field <= self.epsilon] - self.epsilon) ** 2
+        self.dist_field[self.dist_field <= self.epsilon] = \
+            (1 / (2 * self.epsilon)) * (self.dist_field[self.dist_field <= self.epsilon] - self.epsilon) ** 2
         self.dist_field[self.dist_field > self.epsilon] = 0
 
     def collisions(self, poses):
@@ -52,7 +52,7 @@ class Simple:
         Returns:
             (K * T, tensor) 1 if collision, 0 otherwise
         """
-        # assert poses.size() == (self.K * self.T, 3)
+        assert poses.size() == (self.K * self.T, 3)
 
         utils.world2map(self.map, poses, out=self.scaled)
 
@@ -69,6 +69,8 @@ class Simple:
         return self.perm.type(self.dtype)
 
     def check_collision_in_map(self, poses):
+        assert poses.size() == (self.K * self.T, 3)
+
         utils.world2map(self.map, poses, out=self.scaled)
 
         L = self.car_length

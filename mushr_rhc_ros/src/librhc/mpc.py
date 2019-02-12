@@ -18,6 +18,10 @@ class MPC:
         self.reset(init=True)
 
     def reset(self, init=False):
+        """
+        Args:
+        init [bool] -- whether this is being called by the init function
+        """
         self.T = self.params.get_int("T", default=15)
         self.K = self.params.get_int("K", default=62)
 
@@ -39,15 +43,15 @@ class MPC:
     def step(self, state):
         """
         Args:
-          state (3, tensor): current position
+        state [(3,) tensor] -- Current position in "world" coordinates
         """
         assert state.size() == (3,)
 
-        if not self.has_goal():
-            return None
-
         if self.at_goal(state):
             return None
+
+        with self.goal_lock:
+            g = self.goal
 
         self.rollouts.zero_()
 
@@ -61,24 +65,28 @@ class MPC:
             cur_x = self.rollouts[:, t - 1]
             self.rollouts[:, t] = self.kinematics.apply(cur_x, trajs[:, t - 1])
 
-        costs = self.cost.apply(self.rollouts, self.goal)
+        costs = self.cost.apply(self.rollouts, g)
         result = self.trajgen.generate_control(trajs, costs)[0]
         return result
 
     def set_goal(self, goal):
+        """
+        Args:
+        goal [(3,) tensor] -- Goal in "world" coordinates
+        """
         assert goal.size() == (3,)
 
         with self.goal_lock:
             self.goal = goal
-            self.cost.value_fn.set_goal(goal)
+            return self.cost.value_fn.set_goal(goal)
 
     def at_goal(self, state):
+        """
+        Args:
+        state [(3,) tensor] -- Current position in "world" coordinates
+        """
         with self.goal_lock:
             if self.goal is None:
                 return False
         dist = self.goal[:2].sub(state[:2]).abs_()
         return dist.lt(self.goal_threshold).min() == 1
-
-    def has_goal(self):
-        with self.goal_lock:
-            return self.goal is not None

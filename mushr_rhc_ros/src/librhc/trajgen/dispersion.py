@@ -133,19 +133,20 @@ class Dispersion:
 
     def get_control_trajectories(self):
         '''
-          Returns (K, T, NCTRL) vector of controls
+        Returns:
+        [(K, T, NCTRL) tensor] -- of controls
             ([:, :, 0] is the desired speed, [:, :, 1] is the control delta)
         '''
         return self.ctrls
 
     def generate_control(self, controls, costs):
         '''
-        Inputs
-            controls (K, T, NCTRL tensor): Returned by get_controls
-            costs (K, 1) cost to take a path
+        Args:
+        controls [(K, T, NCTRL) tensor] -- Returned by get_control_trajectories
+        costs [(K, 1) tensor] -- Cost to take a path
 
-        Returns
-            (T, NCTRL tensor) the lowest cost path
+        Returns:
+        [(T, NCTRL) tensor] -- The lowest cost trajectory to take
         '''
         assert controls.size() == (self.K, self.T, 2)
         assert costs.size() == (self.K,)
