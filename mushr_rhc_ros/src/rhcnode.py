@@ -154,7 +154,7 @@ class RHCNode:
                              PoseWithCovarianceStamped, self.cb_initialpose)
 
         if rospy.get_param("~use_odom_pose", default=True):
-            rospy.Subscriber("/pf/pose/odom",
+            rospy.Subscriber("/pf/viz/odom",
                              Odometry, self.cb_odom, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
