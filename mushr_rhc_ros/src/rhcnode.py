@@ -88,6 +88,12 @@ class RHCNode:
         rate = rospy.Rate(50)
         self.logger.info("Initialized")
 
+        # If we are trying to debug our rollouts, we only want to run
+        # the loop on initial pose. This way of implementing it could be
+        # changed, but for now this will get the job done
+        if self.debug_rollouts:
+            rospy.spin()
+
         while not rospy.is_shutdown() and self.run:
             next_ctrl = self.run_loop(self.inferred_pose())
 
@@ -142,7 +148,8 @@ class RHCNode:
             rospy.Subscriber("/sim_car_pose/pose",
                              PoseStamped, self.cb_pose, queue_size=10)
 
-        if rospy.get_param("~show_rollout", default=False):
+        self.debug_rollouts = rospy.get_param("~debug_rollouts", default=False)
+        if self.debug_rollouts:
             rospy.Subscriber("/initialpose",
                              PoseWithCovarianceStamped, self.cb_initialpose)
 
@@ -200,23 +207,11 @@ class RHCNode:
 
     def cb_pose(self, msg):
         self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
-        # self.set_inferred_pose(self.dtype([
-        #     msg.pose.position.x,
-        #     msg.pose.position.y,
-        #     utils.rosquaternion_to_angle(msg.pose.orientation)
-        # ]))
 
     def cb_initialpose(self, msg):
         ip = self.dtype(self.dtype(utils.rospose_to_posetup(msg.pose.pose)))
-        # ip = self.dtype([
-        #     msg.pose.pose.position.x,
-        #     msg.pose.pose.position.y,
-        #     utils.rosquaternion_to_angle(msg.pose.pose.orientation)
-        # ])
 
-        rospy.set_param('~viz_cost_fn', True)
         self.run_loop(ip)
-        rospy.delete_param('~viz_cost_fn')
 
     def publish_ctrl(self, ctrl):
         assert ctrl.size() == (2,)

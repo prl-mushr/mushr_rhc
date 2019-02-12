@@ -63,13 +63,26 @@ class Waypoints:
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
 
-        if self.params.get_bool("viz_cost_fn", False):
+        if self.params.get_bool("viz/cost_fn/on", False):
             import librhc.rosviz as rosviz
-            rosviz.viz_paths_cmap(poses, result, ns="final_result", cmap='coolwarm')
-            rosviz.viz_paths_cmap(poses, dists, ns="dists", cmap='coolwarm')
-            rosviz.viz_paths_cmap(poses, cost2go, ns="cost2go", cmap='coolwarm')
-            rosviz.viz_paths_cmap(poses, collision_cost, ns="collision_cost", cmap='coolwarm')
-            rosviz.viz_paths_cmap(poses, obstacle_dist_cost, ns="obstacle_dist_cost", cmap='coolwarm')
-            rosviz.viz_paths_cmap(poses, smoothness, ns="smoothness", cmap='coolwarm')
+
+            n_viz = self.params.get_int("viz/cost_fn/n_viz", -1)
+
+            def print_n(c, ns, cmap='coolwarm'):
+                _, all_idx = torch.sort(c)
+                idx = all_idx[:n_viz] if n_viz > -1 else all_idx
+                if self.params.get_bool('viz/cost_fn/print_stats', False):
+                    self.logger.info(ns)
+                    self.logger.info("Min: " + str(torch.min(c)) +
+                                     ", Max: " + str(torch.max(c)) +
+                                     ", Avg: " + str(torch.mean(c)))
+                rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
+
+            print_n(result, ns="final_result")
+            print_n(dists, ns="dists", cmap='PiYG')
+            print_n(cost2go, ns="cost2go", cmap='RdBu')
+            print_n(collision_cost, ns="collision_cost", cmap='PuOr')
+            print_n(obstacle_dist_cost, ns="obstacle_dist_cost", cmap='Spectral')
+            print_n(smoothness, ns="smoothness", cmap='seismic')
 
         return result

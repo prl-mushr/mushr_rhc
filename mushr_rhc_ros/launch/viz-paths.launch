@@ -8,7 +8,10 @@
 
         <param name="use_sim_pose" value="1" />
         <param name="use_odom_pose" value="0" />
-        <param name="show_rollout" value="1" />
+        <param name="debug_rollouts" value="1" />
+        <param name="viz/cost_fn/on" value="1" />
+        <param name="viz/cost_fn/n_viz" value="1" />
+        <param name="viz/cost_fn/print_stats" value="1" />
         <remap from="/vesc/high_level/ackermann_cmd_mux/input/nav_0" to="/dev/null" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
