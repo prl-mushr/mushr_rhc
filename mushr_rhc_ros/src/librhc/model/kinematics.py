@@ -17,7 +17,7 @@ class Kinematics:
 
     def set_k(self, k):
         self.K = k
-        self.wheel_base = self.params.get_float("model/wheel_base", default=0.33)
+        self.wheel_base = self.params.get_float("model/wheel_base", default=0.29)
 
         time_horizon = utils.get_time_horizon(self.params)
         T = self.params.get_int('T', default=15)
