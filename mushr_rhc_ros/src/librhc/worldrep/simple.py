@@ -44,6 +44,7 @@ class Simple:
         self.dist_field[self.dist_field <= self.epsilon] = \
             (1 / (2 * self.epsilon)) * (self.dist_field[self.dist_field <= self.epsilon] - self.epsilon) ** 2
         self.dist_field[self.dist_field > self.epsilon] = 0
+        self.dist_field = torch.from_numpy(self.dist_field).type(self.dtype)
 
     def collisions(self, poses):
         """
@@ -120,4 +121,4 @@ class Simple:
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
 
-        return torch.from_numpy(self.dist_field[ys, xs] * self.map.resolution).type(self.dtype)
+        return self.dist_field[ys, xs]

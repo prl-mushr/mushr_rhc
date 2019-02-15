@@ -19,9 +19,9 @@ class Waypoints:
         self.T = self.params.get_int("T", default=15)
         self.K = self.params.get_int("K", default=62)
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
-        self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=100.0)
+        self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=5.0)
         self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
-        self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.08)
+        self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.04)
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost",
                                                  default=100.0)
 
@@ -56,7 +56,7 @@ class Waypoints:
                                 all_poses).view(self.K, self.T)
 
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
-        obstacle_dist_cost = obstacle_distances[:, self.T-1].mul(self.obs_dist_w)
+        obstacle_dist_cost = obstacle_distances[:].sum(dim=1).mul(self.obs_dist_w)
 
         # reward smoothness by taking the integral over the rate of change in poses,
         # with time-based discounting factor
@@ -79,10 +79,10 @@ class Waypoints:
                 rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
 
             print_n(result, ns="final_result")
-            print_n(dists, ns="dists", cmap='PiYG')
-            print_n(cost2go, ns="cost2go", cmap='RdBu')
-            print_n(collision_cost, ns="collision_cost", cmap='PuOr')
-            print_n(obstacle_dist_cost, ns="obstacle_dist_cost", cmap='Spectral')
-            print_n(smoothness, ns="smoothness", cmap='seismic')
+            print_n(dists, ns="dists")
+            print_n(cost2go, ns="cost2go")
+            print_n(collision_cost, ns="collision_cost")
+            print_n(obstacle_dist_cost, ns="obstacle_dist_cost")
+            print_n(smoothness, ns="smoothness")
 
         return result
