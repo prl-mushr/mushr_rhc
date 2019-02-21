@@ -1,56 +1,29 @@
+#!/usr/bin/env python
+
 import os
 import rospy
 import threading
 import cProfile
+import signal
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-from nav_msgs.msg import Odometry, MapMetaData
-from nav_msgs.srv import GetMap
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray
+from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from std_srvs.srv import Empty as SrvEmpty
 
 import logger
 import parameters
 import utils
-
-import librhc
-import librhc.cost as cost
-import librhc.model as model
-import librhc.trajgen as trajgen
-import librhc.types as types
-import librhc.value as value
-import librhc.worldrep as worldrep
-
-motion_models = {
-    "kinematic": model.Kinematics,
-}
-
-trajgens = {
-    "tl": trajgen.TL,
-    "dispersion": trajgen.Dispersion,
-}
-
-cost_functions = {
-    "waypoints": cost.Waypoints,
-}
-
-value_functions = {
-    "simpleknn": value.SimpleKNN,
-}
-
-world_reps = {
-    "simple": worldrep.Simple,
-}
+import rhctensor
+import rhcbase
 
 
-class RHCNode:
-    def __init__(self, dtype, name):
-        self.dtype = dtype
+class RHCNode(rhcbase.RHCBase):
+    def __init__(self, dtype, params, logger, name):
+        rospy.init_node(name, anonymous=True, disable_signals=True)
 
-        self.params = parameters.RosParams()
-        self.logger = logger.RosLog()
-        self.ackermann_msg_id = 0
+        super(RHCNode, self).__init__(dtype, params, logger)
 
         self.reset_lock = threading.Lock()
         self.inferred_pose_lock = threading.Lock()
@@ -61,8 +34,6 @@ class RHCNode:
         self.ready_event = threading.Event()
         self.events = [self.goal_event, self.map_metadata_event, self.ready_event]
         self.run = True
-
-        rospy.init_node(name, anonymous=True, disable_signals=True)  # Initialize the node
 
         self.do_profile = self.params.get_bool("profile", default=False)
 
@@ -81,7 +52,8 @@ class RHCNode:
         self.logger.info("Starting RHController")
         self.start_profile()
         self.setup_pub_sub()
-        self.load_controller()
+        self.rhctrl = self.load_controller()
+        self.T = self.params.get_int("T")
 
         self.ready_event.set()
 
@@ -95,12 +67,12 @@ class RHCNode:
             rospy.spin()
 
         while not rospy.is_shutdown() and self.run:
-            next_ctrl = self.run_loop(self.inferred_pose())
+            next_traj, rollout = self.run_loop(self.inferred_pose())
 
-            if next_ctrl is None:
+            if next_traj is None:
                 continue
 
-            self.publish_ctrl(next_ctrl)
+            self.publish_traj(next_traj, rollout)
             # For experiments. If the car is at the goal, notify the
             # experiment tool
             if self.rhctrl.at_goal(self.inferred_pose()):
@@ -115,6 +87,10 @@ class RHCNode:
         if rospy.is_shutdown():
             return None
         with self.reset_lock:
+            # If a reset is initialed after the goal_event was set, the goal
+            # will be cleared. So we have to have another goal check here.
+            if not self.goal_event.is_set():
+                return None
             if ip is not None:
                 return self.rhctrl.step(ip)
 
@@ -124,16 +100,6 @@ class RHCNode:
             ev.set()
         self.run = False
 
-    def load_controller(self):
-        m = self.get_model()
-        tg = self.get_trajgen(m)
-        cf = self.get_cost_fn()
-
-        self.rhctrl = librhc.MPC(self.params,
-                                 self.logger,
-                                 self.dtype,
-                                 m, tg, cf)
-
     def setup_pub_sub(self):
         rospy.Service("~reset/soft", SrvEmpty, self.srv_reset_soft)
         rospy.Service("~reset/hard", SrvEmpty, self.srv_reset_hard)
@@ -141,10 +107,7 @@ class RHCNode:
         rospy.Subscriber("/move_base_simple/goal",
                          PoseStamped, self.cb_goal, queue_size=1)
 
-        rospy.Subscriber("/map_metadata",
-                         MapMetaData, self.cb_map_metadata, queue_size=1)
-
-        if rospy.get_param("~use_sim_pose", default=False):
+        if self.params.get_bool("use_sim_pose", default=False):
             rospy.Subscriber("/sim_car_pose/pose",
                              PoseStamped, self.cb_pose, queue_size=10)
 
@@ -153,17 +116,19 @@ class RHCNode:
             rospy.Subscriber("/initialpose",
                              PoseWithCovarianceStamped, self.cb_initialpose)
 
-        if rospy.get_param("~use_odom_pose", default=True):
+        if self.params.get_bool("use_odom_pose", default=True):
             rospy.Subscriber("/pf/viz/odom",
                              Odometry, self.cb_odom, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
-                "~ctrl_topic",
+                "ctrl_topic",
                 default="/vesc/high_level/ackermann_cmd_mux/input/nav_0"
             ),
             AckermannDriveStamped, queue_size=2
         )
+
+        self.rollout_pub = rospy.Publisher("~rollouts", PoseArray, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher("/experiments/finished",
@@ -176,6 +141,7 @@ class RHCNode:
         rospy.loginfo("Start hard reset")
         self.reset_lock.acquire()
         self.load_controller()
+        self.goal_event.clear()
         self.reset_lock.release()
         rospy.loginfo("End hard reset")
         return []
@@ -188,6 +154,7 @@ class RHCNode:
         rospy.loginfo("Start soft reset")
         self.reset_lock.acquire()
         self.rhctrl.reset()
+        self.goal_event.clear()
         self.reset_lock.release()
         rospy.loginfo("End soft reset")
         return []
@@ -213,15 +180,21 @@ class RHCNode:
 
         self.run_loop(ip)
 
-    def publish_ctrl(self, ctrl):
-        assert ctrl.size() == (2,)
+    def publish_traj(self, traj, rollout):
+        assert traj.size() == (self.T, 2)
+        assert rollout.size() == (self.T, 3)
+
+        ctrl = traj[0]
         ctrlmsg = AckermannDriveStamped()
         ctrlmsg.header.stamp = rospy.Time.now()
-        ctrlmsg.header.seq = self.ackermann_msg_id
         ctrlmsg.drive.speed = ctrl[0]
         ctrlmsg.drive.steering_angle = ctrl[1]
         self.rp_ctrls.publish(ctrlmsg)
-        self.ackermann_msg_id += 1
+
+        rolloutmsg = PoseArray()
+        rolloutmsg.header.stamp = rospy.Time.now()
+        rolloutmsg.poses = map(lambda x: x.position, rollout)
+        self.rollout_pub.publish(rolloutmsg)
 
     def set_inferred_pose(self, ip):
         with self.inferred_pose_lock:
@@ -231,73 +204,18 @@ class RHCNode:
         with self.inferred_pose_lock:
             return self._inferred_pose
 
-    def get_model(self):
-        mname = self.params.get_str("model_name", default="kinematic")
-        if mname not in motion_models:
-            self.logger.fatal("model '{}' is not valid".format(mname))
 
-        return motion_models[mname](self.params, self.logger, self.dtype)
+if __name__ == '__main__':
+    params = parameters.RosParams()
+    logger = logger.RosLog()
+    node = RHCNode(rhctensor.float_tensor(), params, logger, "rhcontroller")
 
-    def get_trajgen(self, model):
-        tgname = self.params.get_str("trajgen_name", default="tl")
-        if tgname not in trajgens:
-            self.logger.fatal("trajgen '{}' is not valid".format(tgname))
+    signal.signal(signal.SIGINT, node.shutdown)
+    rhc = threading.Thread(target=node.start)
+    rhc.start()
 
-        return trajgens[tgname](self.params, self.logger, self.dtype, model)
+    # wait for a signal to shutdown
+    while node.run:
+        signal.pause()
 
-    def cb_map_metadata(self, msg):
-        default_map_name = "default"
-        map_file = self.params.get_str("map_file", default=default_map_name, global_=True)
-        name = os.path.splitext(os.path.basename(map_file))[0]
-
-        if name is default_map_name:
-            rospy.logwarn("Default map name being used, will be corrupted on map change. " +
-                          "To fix, set '/map_file' parameter with map_file location")
-
-        x, y, angle = utils.rospose_to_posetup(msg.origin)
-        self.map_data = types.MapData(
-            name=name,
-            resolution=msg.resolution,
-            origin_x=x,
-            origin_y=y,
-            orientation_angle=angle,
-            width=msg.width,
-            height=msg.height,
-            get_map_data=self.get_map
-        )
-        self.map_metadata_event.set()
-
-    def get_map(self):
-        srv_name = self.params.get_str("static_map", default="/static_map")
-        self.logger.debug("Waiting for map service")
-        rospy.wait_for_service(srv_name)
-        self.logger.debug("Map service started")
-
-        map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
-        return map_msg.data
-
-    def get_cost_fn(self):
-        cfname = self.params.get_str("cost_fn_name", default="waypoints")
-        if cfname not in cost_functions:
-            self.logger.fatal("cost_fn '{}' is not valid".format(cfname))
-
-        wrname = self.params.get_str("world_rep_name", default="simple")
-        if wrname not in world_reps:
-            self.logger.fatal("world_rep '{}' is not valid".format(wrname))
-
-        self.logger.debug("Waiting for map metadata")
-        self.map_metadata_event.wait()
-        self.logger.debug("Recieved map metadata")
-
-        wr = world_reps[wrname](self.params, self.logger, self.dtype, self.map_data)
-
-        vfname = self.params.get_str("value_fn_name", default="simpleknn")
-        if vfname not in value_functions:
-            self.logger.fatal("value_fn '{}' is not valid".format(vfname))
-
-        vf = value_functions[vfname](self.params, self.logger, self.dtype, self.map_data)
-
-        return cost_functions[cfname](self.params,
-                                      self.logger,
-                                      self.dtype,
-                                      self.map_data, wr, vf)
+    rhc.join()

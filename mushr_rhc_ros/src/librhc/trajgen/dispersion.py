@@ -151,4 +151,4 @@ class Dispersion:
         assert controls.size() == (self.K, self.T, 2)
         assert costs.size() == (self.K,)
         _, idx = torch.min(costs, 0)
-        return controls[idx]
+        return controls[idx], idx

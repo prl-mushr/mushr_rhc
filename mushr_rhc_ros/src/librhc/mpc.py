@@ -66,8 +66,8 @@ class MPC:
             self.rollouts[:, t] = self.kinematics.apply(cur_x, trajs[:, t - 1])
 
         costs = self.cost.apply(self.rollouts, g)
-        result = self.trajgen.generate_control(trajs, costs)[0]
-        return result
+        result, idx = self.trajgen.generate_control(trajs, costs)
+        return result, self.rollouts[idx]
 
     def set_goal(self, goal):
         """
