@@ -43,6 +43,7 @@ class RHCBase(object):
         self.logger = logger
 
         rospy.Subscriber("/map_metadata", MapMetaData, self.cb_map_metadata, queue_size=1)
+        self.map_data = None
 
     def load_controller(self):
         m = self.get_model()
@@ -79,7 +80,7 @@ class RHCBase(object):
 
         self.logger.debug("Waiting for map metadata")
         while self.map_data is None:
-            rospy.Time.wallsleep(0.1)
+            rospy.sleep(0.1)
         self.logger.debug("Recieved map metadata")
 
         wr = world_reps[wrname](self.params, self.logger, self.dtype, self.map_data)

@@ -7,7 +7,7 @@ import cProfile
 import signal
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray
+from geometry_msgs.msg import Point, Pose, PoseArray, PoseStamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from std_srvs.srv import Empty as SrvEmpty
@@ -60,12 +60,6 @@ class RHCNode(rhcbase.RHCBase):
         rate = rospy.Rate(50)
         self.logger.info("Initialized")
 
-        # If we are trying to debug our rollouts, we only want to run
-        # the loop on initial pose. This way of implementing it could be
-        # changed, but for now this will get the job done
-        if self.debug_rollouts:
-            rospy.spin()
-
         while not rospy.is_shutdown() and self.run:
             next_traj, rollout = self.run_loop(self.inferred_pose())
 
@@ -85,12 +79,12 @@ class RHCNode(rhcbase.RHCBase):
     def run_loop(self, ip):
         self.goal_event.wait()
         if rospy.is_shutdown():
-            return None
+            return None, None
         with self.reset_lock:
             # If a reset is initialed after the goal_event was set, the goal
             # will be cleared. So we have to have another goal check here.
             if not self.goal_event.is_set():
-                return None
+                return None, None
             if ip is not None:
                 return self.rhctrl.step(ip)
 
@@ -111,11 +105,6 @@ class RHCNode(rhcbase.RHCBase):
             rospy.Subscriber("/sim_car_pose/pose",
                              PoseStamped, self.cb_pose, queue_size=10)
 
-        self.debug_rollouts = rospy.get_param("~debug_rollouts", default=False)
-        if self.debug_rollouts:
-            rospy.Subscriber("/initialpose",
-                             PoseWithCovarianceStamped, self.cb_initialpose)
-
         if self.params.get_bool("use_odom_pose", default=True):
             rospy.Subscriber("/pf/viz/odom",
                              Odometry, self.cb_odom, queue_size=10)
@@ -128,7 +117,8 @@ class RHCNode(rhcbase.RHCBase):
             AckermannDriveStamped, queue_size=2
         )
 
-        self.rollout_pub = rospy.Publisher("~rollouts", PoseArray, queue_size=10)
+        traj_chosen_t = self.params.get_str("traj_chosen_topic", default='~traj_chosen')
+        self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, PoseArray, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher("/experiments/finished",
@@ -175,11 +165,6 @@ class RHCNode(rhcbase.RHCBase):
     def cb_pose(self, msg):
         self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
 
-    def cb_initialpose(self, msg):
-        ip = self.dtype(self.dtype(utils.rospose_to_posetup(msg.pose.pose)))
-
-        self.run_loop(ip)
-
     def publish_traj(self, traj, rollout):
         assert traj.size() == (self.T, 2)
         assert rollout.size() == (self.T, 3)
@@ -193,8 +178,8 @@ class RHCNode(rhcbase.RHCBase):
 
         rolloutmsg = PoseArray()
         rolloutmsg.header.stamp = rospy.Time.now()
-        rolloutmsg.poses = map(lambda x: x.position, rollout)
-        self.rollout_pub.publish(rolloutmsg)
+        rolloutmsg.poses = map(lambda x: Pose(position=Point(x=x[0], y=x[1])), rollout)
+        self.traj_chosen_pub.publish(rolloutmsg)
 
     def set_inferred_pose(self, ip):
         with self.inferred_pose_lock:

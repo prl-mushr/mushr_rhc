@@ -6,7 +6,8 @@ import torch
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
 
-_traj_pub = rospy.Publisher("/trajs_array", MarkerArray, queue_size=100)
+_traj_pub = rospy.Publisher(rospy.get_param("~debug/viz_rollouts/topic", "~debug/viz_rollouts"),
+                            MarkerArray, queue_size=100)
 
 
 def viz_paths_cmap(poses, costs, ns="paths", cmap='plasma', scale=.03):

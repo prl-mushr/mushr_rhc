@@ -13,6 +13,10 @@ class Waypoints:
         self.world_rep = world_rep
         self.value_fn = value_fn
 
+        self.viz_rollouts = self.params.get_bool("debug/flag/viz_rollouts", False)
+        self.n_viz = self.params.get_int("debug/viz_rollouts/n", -1)
+        self.print_stats = self.params.get_bool("debug/viz_rollouts/print_stats", False)
+
         self.reset()
 
     def reset(self):
@@ -63,20 +67,18 @@ class Waypoints:
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
         result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
 
-        if self.params.get_bool("viz/cost_fn/on", False):
+        if self.viz_rollouts:
             import librhc.rosviz as rosviz
-
-            n_viz = self.params.get_int("viz/cost_fn/n_viz", -1)
 
             def print_n(c, ns, cmap='coolwarm'):
                 _, all_idx = torch.sort(c)
-                idx = all_idx[:n_viz] if n_viz > -1 else all_idx
-                if self.params.get_bool('viz/cost_fn/print_stats', False):
+                idx = all_idx[:self.n_viz] if self.n_viz > -1 else all_idx
+                rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
+                if self.print_stats:
                     self.logger.info(ns)
                     self.logger.info("Min: " + str(torch.min(c)) +
                                      ", Max: " + str(torch.max(c)) +
                                      ", Avg: " + str(torch.mean(c)))
-                rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
 
             print_n(result, ns="final_result")
             print_n(dists, ns="dists")
