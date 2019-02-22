@@ -1,0 +1,17 @@
+traj_chosen_topic: '/rhcontroller/traj_chosen'
+use_sim_pose: false
+use_odom_pose: true
+
+debug:
+    ip_topic: '/sim_car_pose/pose'
+    flag:
+        viz_rollouts: true
+        current_path: true
+        viz_traj_chosen: true
+        viz_cost_fn: true
+    viz_rollouts:
+        n: 1
+        print_stats: false
+    traj_chosen_trace:
+        rate: 4
+

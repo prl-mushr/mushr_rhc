@@ -1,0 +1,13 @@
+traj_chosen_topic: '~traj_chosen'
+use_sim_pose: false
+use_odom_pose: true
+
+debug:
+    ip_topic: '/sim_car_pose/pose'
+    update_trajectory_rate: 2
+    flag:
+        rollouts_on_init_pose: true
+        viz_rollouts: true
+    viz_rollouts:
+        n: 10
+        print_stats: true

@@ -1,0 +1,4 @@
+use_sim_pose: true
+use_odom_pose: false
+
+profile: false
