@@ -91,7 +91,7 @@ class SimpleKNN:
             print "valid points len: " + str(len(valid))
         return np.array(valid)
 
-    def set_goal(self, goal, n_neighbors=7, k=3):
+    def set_goal(self, goal, n_neighbors=7, k=6):
         """
         Args:
         goal [(3,) tensor] -- Goal in "world" coordinates

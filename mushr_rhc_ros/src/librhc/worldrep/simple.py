@@ -59,6 +59,8 @@ class Simple:
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
+        print xs
+        print ys
 
         self.perm.zero_()
         self.perm |= self.perm_reg[ys, xs]

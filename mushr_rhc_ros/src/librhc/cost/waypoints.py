@@ -49,23 +49,22 @@ class Waypoints:
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
         # use terminal distance (K, tensor)
-        dists = poses[:, self.T-1, :2].sub(goal[:2]).norm(p=2, dim=1).mul(self.dist_w)
         cost2go = self.value_fn.get_value(poses[:, self.T-1, :]).mul(self.cost2go_w)
 
         # get all collisions (K, T, tensor)
-        collisions = self.world_rep.check_collision_in_map(
-                        all_poses).view(self.K, self.T)
-
-        obstacle_distances = self.world_rep.distances(
-                                all_poses).view(self.K, self.T)
-
+        collisions = self.world_rep.check_collision_in_map(all_poses).view(self.K, self.T)
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
-        obstacle_dist_cost = obstacle_distances[:].sum(dim=1).mul(self.obs_dist_w)
+
+        obstacle_distances = self.world_rep.distances(all_poses).view(self.K, self.T)
+
+        obs_dist_cost = obstacle_distances[:].sum(dim=1).mul(self.obs_dist_w)
 
         # reward smoothness by taking the integral over the rate of change in poses,
         # with time-based discounting factor
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
-        result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
+
+        # result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
+        result = cost2go.add(collision_cost).add(obs_dist_cost).add(smoothness)
 
         if self.viz_rollouts:
             import librhc.rosviz as rosviz
@@ -81,10 +80,9 @@ class Waypoints:
                                      ", Avg: " + str(torch.mean(c)))
 
             print_n(result, ns="final_result")
-            print_n(dists, ns="dists")
             print_n(cost2go, ns="cost2go")
             print_n(collision_cost, ns="collision_cost")
-            print_n(obstacle_dist_cost, ns="obstacle_dist_cost")
+            print_n(obs_dist_cost, ns="obstacle_dist_cost")
             print_n(smoothness, ns="smoothness")
 
         return result

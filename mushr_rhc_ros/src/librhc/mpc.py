@@ -48,7 +48,7 @@ class MPC:
         assert state.size() == (3,)
 
         if self.at_goal(state):
-            return None
+            return None, None
 
         with self.goal_lock:
             g = self.goal

@@ -63,22 +63,20 @@ class RHCNode(rhcbase.RHCBase):
         while not rospy.is_shutdown() and self.run:
             next_traj, rollout = self.run_loop(self.inferred_pose())
 
-            if next_traj is None:
-                continue
-
-            self.publish_traj(next_traj, rollout)
-            # For experiments. If the car is at the goal, notify the
-            # experiment tool
-            if self.rhctrl.at_goal(self.inferred_pose()):
-                self.expr_at_goal.publish(Empty())
-                self.goal_event.clear()
+            if next_traj is not None:
+                self.publish_traj(next_traj, rollout)
+                # For experiments. If the car is at the goal, notify the
+                # experiment tool
+                if self.rhctrl.at_goal(self.inferred_pose()):
+                    self.expr_at_goal.publish(Empty())
+                    self.goal_event.clear()
             rate.sleep()
 
         self.end_profile()
 
     def run_loop(self, ip):
         self.goal_event.wait()
-        if rospy.is_shutdown():
+        if rospy.is_shutdown() or ip is None:
             return None, None
         with self.reset_lock:
             # If a reset is initialed after the goal_event was set, the goal
@@ -87,6 +85,7 @@ class RHCNode(rhcbase.RHCBase):
                 return None, None
             if ip is not None:
                 return self.rhctrl.step(ip)
+            self.logger.err("Shouldn't get here: run_loop")
 
     def shutdown(self, signum, frame):
         rospy.signal_shutdown("SIGINT recieved")
@@ -178,6 +177,7 @@ class RHCNode(rhcbase.RHCBase):
 
         rolloutmsg = PoseArray()
         rolloutmsg.header.stamp = rospy.Time.now()
+        rolloutmsg.header.frame_id = 'map'
         rolloutmsg.poses = map(lambda x: Pose(position=Point(x=x[0], y=x[1])), rollout)
         self.traj_chosen_pub.publish(rolloutmsg)
 

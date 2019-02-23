@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
+import cProfile
 import logger
+import matplotlib.cm as cm
+import matplotlib.colors as mplcolors
+import os
 import parameters
 import rhcbase
 import rhctensor
 import rospy
 import threading
+import torch
 import utils
-import cProfile
-import os
 
-from geometry_msgs.msg import PoseArray, PoseStamped, PoseWithCovarianceStamped
+from std_msgs.msg import ColorRGBA
+from geometry_msgs.msg import Point, PoseArray, PoseStamped, PoseWithCovarianceStamped
 from visualization_msgs.msg import Marker
 
 
@@ -44,7 +48,7 @@ class RHCDebug(rhcbase.RHCBase):
         self.current_path.pose.orientation.z = 0.0
         self.current_path.pose.orientation.w = 1.0
         self.current_path.color.a = 1.0
-        self.current_path.color.b = 1.0
+        self.current_path.color.r = 1.0
         self.current_path.scale.x = 0.03
 
         self.rhctrl = self.load_controller()
@@ -62,6 +66,9 @@ class RHCDebug(rhcbase.RHCBase):
         self.traj_chosen_pub = rospy.Publisher("~traj_chosen", Marker, queue_size=10)
 
         rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
+
+        # self.value_heat_map_pub = rospy.Publisher("~value_fn", Marker, queue_size=100)
+        # self.pub_heat_map()
 
     def start_profile(self):
         if self.do_profile:
@@ -132,6 +139,73 @@ class RHCDebug(rhcbase.RHCBase):
 
         self.traj_chosen_pub.publish(m)
         self.traj_chosen_id += 1
+
+    def pub_heat_map(self):
+        m = Marker()
+        m.header.frame_id = "map"
+        m.header.stamp = rospy.Time.now()
+        m.id = 1
+        m.type = m.POINTS
+        m.action = m.ADD
+        m.pose.position.x = self.map_data.origin_x
+        m.pose.position.y = self.map_data.origin_y
+        m.pose.position.z = 0
+        m.pose.orientation = utils.angle_to_rosquaternion(self.map_data.angle)
+        m.color.a = 1.0
+        m.color.g = 1.0
+        m.scale.x = 0.5
+
+        rospoints = []
+
+        for i in range(150, self.map_data.width - 150, 50):
+            for j in range(150, self.map_data.height - 150, 50):
+                rospoints.append(self.dtype([i , j]).mul_(self.map_data.resolution))
+
+        print self.map_data.resolution
+        rospoints = torch.stack(rospoints)
+        print rospoints
+
+        print self.map_data.height, self.map_data.width
+        K = self.params.get_int("K")
+        T = self.params.get_int("T")
+
+        # Filter colliding points
+        collisions = self.dtype(K * T, 3)
+        for i in range(0, len(rospoints), K * T):
+            print i
+            end = min(len(rospoints) - i, K * T)
+            collisions[:end, :2] = rospoints[i:i+end]
+            col = self.rhctrl.cost.world_rep.collisions(collisions)
+            for p, c in zip(collisions[:end], col[:end]):
+                if c == 0:
+                    m.points.append(p)
+
+
+        points = self.dtype(K, 3)
+        colors = []
+        for i in range(0, len(m.points), K):
+            end = min(len(m.points) - i, K)
+            points[:end, 0] = self.dtype(map(lambda p: p.x, m.points[i: i+end]))
+            points[:end, 1] = self.dtype(map(lambda p: p.y, m.points[i: i+end]))
+
+            c2g = self.rhctrl.cost.value_fn.get_value(points).mul(cost2go_w)
+
+            colors.extend(map(float, list(c2g)[:end]))
+
+        print colors
+
+        norm = mplcolors.Normalize(vmin=min(colors), vmax=max(colors))
+        cmap = cm.get_cmap('coolwarm')
+
+        def colorfn(cost):
+            col = cmap(norm(cost))
+            r, g, b, a = col[0], col[1], col[2], 1.0
+            if len(col) > 3:
+                a = col[3]
+            return ColorRGBA(r=r, g=g, b=b, a=a)
+
+        m.colors = map(colorfn, colors)
+        self.value_heat_map_pub.publish(m)
 
     def viz_traj_chosen_trace(self):
         rate = rospy.Rate(self.params.get_int("debug/traj_chosen_trace/rate"))

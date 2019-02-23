@@ -3,7 +3,7 @@
 
     <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
 
-    <node pkg="mushr_rhc_ros" type="main.py" name="rhcontroller" output="screen">
+    <node pkg="mushr_rhc_ros" type="rhcnode.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
         <param name="cache_dir" value="~/mushr_rhc_cache/" />
