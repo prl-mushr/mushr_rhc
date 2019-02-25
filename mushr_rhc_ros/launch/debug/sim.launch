@@ -10,5 +10,6 @@
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/debug/params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/debug/sim.yaml" />
     </node>
 </launch>

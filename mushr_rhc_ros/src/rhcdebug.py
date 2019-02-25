@@ -66,35 +66,38 @@ class RHCDebug(rhcbase.RHCBase):
         self.traj_chosen_pub = rospy.Publisher("~traj_chosen", Marker, queue_size=10)
 
         rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
+        self.goal_pub = rospy.Publisher("~goal", Marker, queue_size=10)
 
         # self.value_heat_map_pub = rospy.Publisher("~value_fn", Marker, queue_size=100)
         # self.pub_heat_map()
-
-    def start_profile(self):
-        if self.do_profile:
-            self.logger.warn("Running with profiling")
-            self.pr = cProfile.Profile()
-            self.pr.enable()
-
-    def end_profile(self):
-        if self.do_profile:
-            self.pr.disable()
-            self.pr.dump_stats(os.path.expanduser('~/mushr_rhc_stats.prof'))
 
     def cb_goal(self, msg):
         goal = self.dtype(utils.rospose_to_posetup(msg.pose))
         self.logger.info("Got goal")
         if self.rhctrl is not None:
-            self.start_profile()
             if not self.rhctrl.set_goal(goal):
                 self.logger.err("That goal is unreachable, please choose another")
             else:
                 self.logger.info("Goal set")
                 self.goal = goal
-            self.end_profile()
+                m = Marker()
+                m.header.frame_id = "map"
+                m.header.stamp = rospy.Time.now()
+                m.id = 1
+                m.type = m.ARROW
+                m.action = m.ADD
+                m.pose = msg.pose
+                m.color.r = 1.0
+                m.color.b = 1.0
+                m.scale.x = 1
+                m.scale.y = 0.1
+                m.scale.z = 0.1
+                self.goal_pub.publish(m)
 
     def cb_initialpose(self, msg):
         self.init_pose = self.dtype(utils.rospose_to_posetup(msg.pose.pose))
+
+        self.logger.info("Got initial pose")
 
         if self.debug_current_path:
             # If the current path already exists, delete it.
@@ -237,7 +240,7 @@ class RHCDebug(rhcbase.RHCBase):
     def viz_cost_fn(self):
         rate = rospy.Rate(100)
         while not rospy.is_shutdown():
-            if self.goal is not None:
+            if self.goal is not None and self.inferred_pose is not None:
                 # There is viz_logic in here, so don't do anything with the return
                 self.rhctrl.step(self.inferred_pose)
             rate.sleep()
