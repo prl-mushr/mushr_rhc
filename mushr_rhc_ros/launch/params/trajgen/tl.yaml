@@ -11,5 +11,5 @@ cost_fn/dist_w: 0.0
 cost_fn/obs_dist_w: 100.0
 cost_fn/cost2go_w: 1.0
 cost_fn/smoothing_discount_rate: 1.0
-cost_fn/bounds_cost: 100.0
+cost_fn/bounds_cost: 1000.0
 world_rep/epsilon: 0.6

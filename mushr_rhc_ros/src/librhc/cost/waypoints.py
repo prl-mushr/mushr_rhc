@@ -26,8 +26,7 @@ class Waypoints:
         self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=5.0)
         self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
         self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.04)
-        self.bounds_cost = self.params.get_float("cost_fn/bounds_cost",
-                                                 default=100.0)
+        self.bounds_cost = self.params.get_float("cost_fn/bounds_cost", default=100.0)
 
         self.discount = self.dtype(self.T-1)
         self.discount[:] = 1 + self.smoothing_discount_rate
@@ -72,17 +71,19 @@ class Waypoints:
             def print_n(c, ns, cmap='coolwarm'):
                 _, all_idx = torch.sort(c)
                 idx = all_idx[:self.n_viz] if self.n_viz > -1 else all_idx
+                c_sort, c_sort_idx = c[idx].sort()
                 rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
                 if self.print_stats:
-                    self.logger.info(ns)
-                    self.logger.info("Min: " + str(torch.min(c)) +
-                                     ", Max: " + str(torch.max(c)) +
-                                     ", Avg: " + str(torch.mean(c)))
+                    print(ns + "\nMin: " + str(torch.min(c)) +
+                          ", Max: " + str(torch.max(c)) +
+                          ", Avg: " + str(torch.mean(c)))
+
+                    print(c_sort)
 
             print_n(result, ns="final_result")
             print_n(cost2go, ns="cost2go")
             print_n(collision_cost, ns="collision_cost")
             print_n(obs_dist_cost, ns="obstacle_dist_cost")
-            print_n(smoothness, ns="smoothness")
+            # print_n(smoothness, ns="smoothness")
 
         return result

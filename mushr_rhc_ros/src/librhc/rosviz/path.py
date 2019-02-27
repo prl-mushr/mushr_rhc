@@ -20,6 +20,8 @@ def viz_paths_cmap(poses, costs, ns="paths", cmap='plasma', scale=.03):
 
     def colorfn(cost):
         r, g, b, a = 0.0, 0.0, 0.0, 1.0
+        if cost == min_c:
+            return r, g, b, a
         col = cmap(norm(cost))
         r, g, b = col[0], col[1], col[2]
         if len(col) > 3:

@@ -1,5 +1,5 @@
 <launch>
-    <arg name="map" default="$(find mushr_rhc_ros)/maps/real-floor0.yaml"/>
+    <arg name="map" default="$(find mushr_rhc_ros)/maps/real-floor0-edited.yaml"/>
     <node pkg="map_server" name="map_server" type="map_server" args="$(arg map)" />
     <param name="map_file" value="$(arg map)" />
 </launch>

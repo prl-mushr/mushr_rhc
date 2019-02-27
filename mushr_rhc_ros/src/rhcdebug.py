@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-import cProfile
 import logger
 import matplotlib.cm as cm
 import matplotlib.colors as mplcolors
-import os
 import parameters
 import rhcbase
 import rhctensor
@@ -14,7 +12,7 @@ import torch
 import utils
 
 from std_msgs.msg import ColorRGBA
-from geometry_msgs.msg import Point, PoseArray, PoseStamped, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseArray, PoseStamped, PoseWithCovarianceStamped
 from visualization_msgs.msg import Marker
 
 
@@ -60,10 +58,6 @@ class RHCDebug(rhcbase.RHCBase):
             rospy.Subscriber(ip_topic, PoseStamped, self.cb_inferred_pose, queue_size=10)
 
             self.current_path_pub = rospy.Publisher("~current_path", Marker, queue_size=10)
-
-        traj_chosen_topic = self.params.get_str("traj_chosen_topic")
-        rospy.Subscriber(traj_chosen_topic, PoseArray, self.cb_traj_chosen, queue_size=10)
-        self.traj_chosen_pub = rospy.Publisher("~traj_chosen", Marker, queue_size=10)
 
         rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
         self.goal_pub = rospy.Publisher("~goal", Marker, queue_size=10)
@@ -162,7 +156,7 @@ class RHCDebug(rhcbase.RHCBase):
 
         for i in range(150, self.map_data.width - 150, 50):
             for j in range(150, self.map_data.height - 150, 50):
-                rospoints.append(self.dtype([i , j]).mul_(self.map_data.resolution))
+                rospoints.append(self.dtype([i, j]).mul_(self.map_data.resolution))
 
         print self.map_data.resolution
         rospoints = torch.stack(rospoints)
@@ -183,7 +177,6 @@ class RHCDebug(rhcbase.RHCBase):
                 if c == 0:
                     m.points.append(p)
 
-
         points = self.dtype(K, 3)
         colors = []
         for i in range(0, len(m.points), K):
@@ -191,7 +184,7 @@ class RHCDebug(rhcbase.RHCBase):
             points[:end, 0] = self.dtype(map(lambda p: p.x, m.points[i: i+end]))
             points[:end, 1] = self.dtype(map(lambda p: p.y, m.points[i: i+end]))
 
-            c2g = self.rhctrl.cost.value_fn.get_value(points).mul(cost2go_w)
+            c2g = self.rhctrl.cost.value_fn.get_value(points)
 
             colors.extend(map(float, list(c2g)[:end]))
 
@@ -211,6 +204,9 @@ class RHCDebug(rhcbase.RHCBase):
         self.value_heat_map_pub.publish(m)
 
     def viz_traj_chosen_trace(self):
+        traj_chosen_topic = self.params.get_str("traj_chosen_topic")
+        rospy.Subscriber(traj_chosen_topic, PoseArray, self.cb_traj_chosen, queue_size=10)
+        self.traj_chosen_pub = rospy.Publisher("~traj_chosen", Marker, queue_size=10)
         rate = rospy.Rate(self.params.get_int("debug/traj_chosen_trace/rate"))
         while not rospy.is_shutdown():
             if self.traj_chosen is not None:
