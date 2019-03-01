@@ -1,3 +1,4 @@
+traj_chosen_topic: '/rhcontroller/traj_chosen'
 use_sim_pose: true
 use_odom_pose: false
 

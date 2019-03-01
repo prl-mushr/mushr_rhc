@@ -6,19 +6,13 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /LaserScan1
         - /Pose1
         - /Pose1/Status1
-        - /Marker1
-        - /Marker1/Status1
-        - /Marker2
         - /MarkerArray1
         - /MarkerArray1/Namespaces1
-        - /Marker3
-        - /Marker3/Namespaces1
-        - /Marker4
-        - /Marker4/Status1
-        - /Marker4/Namespaces1
+        - /Marker1
+        - /Marker1/Status1
+        - /Marker1/Namespaces1
       Splitter Ratio: 0.5
     Tree Height: 895
   - Class: rviz/Selection
@@ -39,7 +33,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: LaserScan
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -71,36 +65,6 @@ Visualization Manager:
       Unreliable: false
       Value: true
     - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/LaserScan
-      Color: 245; 131; 255
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: LaserScan
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.05
-      Style: Flat Squares
-      Topic: /scan
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
       Axes Length: 1
       Axes Radius: 0.1
       Class: rviz/Pose
@@ -115,25 +79,9 @@ Visualization Manager:
       Topic: /sim_car_pose/pose
       Unreliable: false
       Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /rhcdebug/current_path
-      Name: Marker
-      Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: false
-      Marker Topic: /rhcdebug/traj_chosen
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /rhcdebug/debug/viz_rollouts
+      Marker Topic: /viz_paths/debug/viz_rollouts
       Name: MarkerArray
       Namespaces:
         collision_cost: false
@@ -144,37 +92,13 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
-      Enabled: false
-      Marker Topic: /rhcdebug/value_fn
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/Marker
       Enabled: true
       Marker Topic: /rhcdebug/goal
       Name: Marker
       Namespaces:
-        "": true
-      Queue Size: 100
-      Value: true
-    - Arrow Length: 0.3
-      Class: rviz/PoseArray
-      Color: 255; 25; 0
-      Enabled: true
-      Name: PoseArray
-      Topic: /pf/viz/laserpose
-      Unreliable: false
-      Value: true
-    - Class: rviz/Marker
-      Enabled: false
-      Marker Topic: /markers
-      Name: Marker
-      Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -199,22 +123,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.09693
+      Distance: 29.7124
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 33.4159
-        Y: 21.3352
-        Z: 8.2599
+        X: 36.0702
+        Y: 19.4547
+        Z: 7.47515
       Name: Current View
       Near Clip Distance: 0.01
       Pitch: 1.5698
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.1404
+      Yaw: 1.1254
     Saved: ~
 Window Geometry:
   Displays:

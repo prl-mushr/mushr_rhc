@@ -71,19 +71,27 @@ class Waypoints:
             def print_n(c, ns, cmap='coolwarm'):
                 _, all_idx = torch.sort(c)
                 idx = all_idx[:self.n_viz] if self.n_viz > -1 else all_idx
-                c_sort, c_sort_idx = c[idx].sort()
+                c_sort, _ = c[idx].sort()
                 rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
-                if self.print_stats:
-                    print(ns + "\nMin: " + str(torch.min(c)) +
-                          ", Max: " + str(torch.max(c)) +
-                          ", Avg: " + str(torch.mean(c)))
-
-                    print(c_sort)
 
             print_n(result, ns="final_result")
             print_n(cost2go, ns="cost2go")
             print_n(collision_cost, ns="collision_cost")
             print_n(obs_dist_cost, ns="obstacle_dist_cost")
-            # print_n(smoothness, ns="smoothness")
+            print_n(smoothness, ns="smoothness")
+
+            if self.print_stats:
+                _, all_sorted_idx = torch.sort(result)
+                idx = all_sorted_idx[:self.n_viz] if self.n_viz > -1 else all_sorted_idx
+                print "Final Result"
+                print result[idx]
+                print "Cost 2 Go"
+                print cost2go[idx]
+                print "Collision Cost"
+                print collision_cost[idx]
+                print "Obstacle Distance Cost"
+                print obs_dist_cost[idx]
+                print "Smoothness"
+                print smoothness[idx]
 
         return result

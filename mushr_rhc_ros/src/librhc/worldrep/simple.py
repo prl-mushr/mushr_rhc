@@ -33,10 +33,8 @@ class Simple:
         self.perm = rhctensor.byte_tensor()(self.K * self.T)
 
         # Ratio of car to extend in every direction
-        # TODO: project car into its actual orientation
-        self.car_ratio = self.params.get_float("world_rep/car_ratio", default=3.2)
-        self.car_length = self.params.get_float("world_rep/car_length", default=0.33)
-        self.car_padding = long((self.car_length / self.map.resolution) / self.car_ratio)
+        self.car_length = self.params.get_float("world_rep/car_length", default=0.55)
+        self.car_width = self.params.get_float("world_rep/car_width", default=0.30)
 
         self.dist_field = ndimage.distance_transform_edt(np.logical_not(self.perm_reg.cpu().numpy()))
 
@@ -77,7 +75,7 @@ class Simple:
         utils.world2map(self.map, poses, out=self.scaled)
 
         L = self.car_length
-        W = L * (1.0/3.0)  # TODO: find correct car w
+        W = self.car_width
 
         # Specify specs of bounding box
         bbox = self.dtype([
@@ -85,7 +83,9 @@ class Simple:
             [L / 2.0, -W / 2.0],
             [-L / 2.0, W / 2.0],
             [-L / 2.0, -W / 2.0]
-        ]).div_(self.map.resolution)
+        ])
+
+        bbox.div_(self.map.resolution)
 
         x = bbox[:, 0].expand(len(poses), -1)
         y = bbox[:, 1].expand(len(poses), -1)

@@ -8,7 +8,7 @@ debug:
         viz_traj_chosen: true
         viz_cost_fn: true
     viz_rollouts:
-        n: 4
-        print_stats: true
+        n: -1
+        print_stats: false
     traj_chosen_trace:
         rate: 1

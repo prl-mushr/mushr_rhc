@@ -1,5 +1,3 @@
-from scipy import signal
-
 import numpy as np
 import os
 import rhctensor
@@ -83,10 +81,6 @@ def load_permissible_region(params, map):
         pr[array_255 == 0] = 1
         pr = np.logical_not(pr)  # 0 is permissible, 1 is not
 
-        KERNEL_SIZE = 31  # 15 cm = 7 pixels = kernel size 15x15
-        kernel = np.ones((KERNEL_SIZE, KERNEL_SIZE))
-        kernel /= kernel.sum()
-        pr = signal.convolve2d(pr, kernel, mode='same') > 0  # boolean 2d array
         np.save(perm_reg_file, pr)
 
     return torch.from_numpy(pr.astype(np.int)).type(rhctensor.byte_tensor())
