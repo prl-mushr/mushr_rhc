@@ -66,4 +66,14 @@ def viz_paths(poses, costs, colorfn, ns="paths", scale=.03):
 
         markers.markers.append(m)
 
+    for i in range(len(poses), rospy.get_param("~K"), 1):
+        m = Marker()
+        m.header.frame_id = "map"
+        m.header.stamp = rospy.Time.now()
+        m.ns = ns
+        m.id = i
+        m.type = m.LINE_STRIP
+        m.action = m.DELETE
+        markers.markers.append(m)
+
     _traj_pub.publish(markers)

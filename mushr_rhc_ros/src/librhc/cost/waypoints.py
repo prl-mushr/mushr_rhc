@@ -62,36 +62,47 @@ class Waypoints:
         # with time-based discounting factor
         smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
 
-        # result = dists.add(cost2go).add(collision_cost).add(obstacle_dist_cost).add(smoothness)
         result = cost2go.add(collision_cost).add(obs_dist_cost).add(smoothness)
+
+        # filter out all colliding trajectories
+        colliding = collision_cost.nonzero()
+        result[colliding] = 1000000000
 
         if self.viz_rollouts:
             import librhc.rosviz as rosviz
 
-            def print_n(c, ns, cmap='coolwarm'):
-                _, all_idx = torch.sort(c)
-                idx = all_idx[:self.n_viz] if self.n_viz > -1 else all_idx
-                c_sort, _ = c[idx].sort()
-                rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
+            non_colliding = (collision_cost == 0).nonzero()
 
-            print_n(result, ns="final_result")
-            print_n(cost2go, ns="cost2go")
-            print_n(collision_cost, ns="collision_cost")
-            print_n(obs_dist_cost, ns="obstacle_dist_cost")
-            print_n(smoothness, ns="smoothness")
+            if non_colliding.size()[0] > 0:
+                def print_n(c, poses, ns, cmap='coolwarm'):
+                    _, all_idx = torch.sort(c)
 
-            if self.print_stats:
-                _, all_sorted_idx = torch.sort(result)
-                idx = all_sorted_idx[:self.n_viz] if self.n_viz > -1 else all_sorted_idx
-                print "Final Result"
-                print result[idx]
-                print "Cost 2 Go"
-                print cost2go[idx]
-                print "Collision Cost"
-                print collision_cost[idx]
-                print "Obstacle Distance Cost"
-                print obs_dist_cost[idx]
-                print "Smoothness"
-                print smoothness[idx]
+                    n = min(self.n_viz, len(c))
+                    idx = all_idx[:n] if n > -1 else all_idx
+                    rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
+
+                print non_colliding.size()
+                p_non_colliding = poses[non_colliding].squeeze()
+                print_n(result[non_colliding].squeeze(), p_non_colliding, ns="final_result")
+                print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
+                print_n(collision_cost[non_colliding].squeeze(), p_non_colliding, ns="collision_cost")
+                print_n(obs_dist_cost[non_colliding].squeeze(), p_non_colliding, ns="obstacle_dist_cost")
+                print_n(smoothness[non_colliding].squeeze(), p_non_colliding, ns="smoothness")
+
+                if self.print_stats:
+                    _, all_sorted_idx = torch.sort(result[non_colliding].squeeze())
+                    n = min(self.n_viz, len(all_sorted_idx))
+                    idx = all_sorted_idx[:n] if n > -1 else all_sorted_idx
+
+                    print "Final Result"
+                    print result[idx]
+                    print "Cost 2 Go"
+                    print cost2go[idx]
+                    print "Collision Cost"
+                    print collision_cost[idx]
+                    print "Obstacle Distance Cost"
+                    print obs_dist_cost[idx]
+                    print "Smoothness"
+                    print smoothness[idx]
 
         return result

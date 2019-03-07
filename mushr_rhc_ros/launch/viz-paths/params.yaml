@@ -10,5 +10,5 @@ debug:
         rollouts_on_init_pose: true
         viz_rollouts: true
     viz_rollouts:
-        n: 10
+        n: -1
         print_stats: true
