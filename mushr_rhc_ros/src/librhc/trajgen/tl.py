@@ -19,8 +19,7 @@ class TL:
         min_delta = self.params.get_float("trajgen/min_delta", default=-0.34)
         max_delta = self.params.get_float("trajgen/max_delta", default=0.34)
 
-        desired_speed = self.params.get_float("trajgen/desired_speed",
-                                              default=1.0)
+        desired_speed = self.params.get_float("trajgen/desired_speed", default=1.0)
         step_size = (max_delta - min_delta) / (self.K - 1)
         deltas = torch.arange(min_delta, max_delta + step_size, step_size)
 
@@ -30,12 +29,13 @@ class TL:
         for t in range(self.T):
             self.ctrls[:, t, 1] = deltas
 
-    def get_control_trajectories(self):
+    def get_control_trajectories(self, velocity):
         '''
         Returns:
         [(K, T, NCTRL) tensor] -- of controls
             ([:, :, 0] is the desired speed, [:, :, 1] is the control delta)
         '''
+        self.ctrls[:, :, 0] = velocity
         return self.ctrls
 
     def generate_control(self, controls, costs):

@@ -131,12 +131,13 @@ class Dispersion:
         self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
         self.ctrls.copy_(ms_ctrls[visited.keys()])
 
-    def get_control_trajectories(self):
+    def get_control_trajectories(self, velocity):
         '''
         Returns:
         [(K, T, NCTRL) tensor] -- of controls
             ([:, :, 0] is the desired speed, [:, :, 1] is the control delta)
         '''
+        self.ctrls[:, :, 0] = velocity
         return self.ctrls
 
     def generate_control(self, controls, costs):
