@@ -9,6 +9,7 @@
         <param name="cache_dir" value="~/mushr_rhc_cache/" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/all_params.yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/real/params.yaml" />
     </node>
 </launch>
