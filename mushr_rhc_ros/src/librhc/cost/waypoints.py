@@ -81,7 +81,6 @@ class Waypoints:
                     idx = all_idx[:n] if n > -1 else all_idx
                     rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
 
-                print non_colliding.size()
                 p_non_colliding = poses[non_colliding].squeeze()
                 print_n(result[non_colliding].squeeze(), p_non_colliding, ns="final_result")
                 print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
