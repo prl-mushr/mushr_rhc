@@ -89,9 +89,9 @@ class RHCNode(rhcbase.RHCBase):
 
     def shutdown(self, signum, frame):
         rospy.signal_shutdown("SIGINT recieved")
+        self.run = False
         for ev in self.events:
             ev.set()
-        self.run = False
 
     def setup_pub_sub(self):
         rospy.Service("~reset/soft", SrvEmpty, self.srv_reset_soft)
