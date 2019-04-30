@@ -1,0 +1,26 @@
+variables:
+  azure_tmpdir: $(Agent.TempDirectory)
+  mushr_dir: $(azure_tmpdir)/mushr_test
+  docker_user: developer
+
+pool:
+  vmImage: 'ubuntu-16.04'
+
+steps:
+- bash:  - bash: |
+          set -ex
+          docker run -v $PWD:/home/$(docker_user)/$(azure) personalrobotics/mushr:xenial /bin/bash -c 'set -ex'
+- bash: git clone https://github.com/colinxs/mushr_test.git $(mushr_dir)
+#- bash: $(mushr_dir)/ci/black.sh . condapython3 check_only
+#- bash: cat $(mushr_dir)/ci/black.sh
+#- bash: echo $(which condapython3)
+#- bash: ll ~/
+#- bash: cat ~/.bashrc
+#- task: Bash@3
+#  inputs:
+#    filePath: $(mushr_dir)/ci/black.sh
+#    arguments: . condapython3 check_only
+#   noRc: false
+#    noProfile: false
+#- bash: $(mushr_dir)/ci/flake8.sh . python2
+
