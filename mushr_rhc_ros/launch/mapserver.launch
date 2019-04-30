@@ -1,6 +1,6 @@
 <launch>
     <arg name="map" default="$(find mushr_rhc_ros)/maps/real-floor0-edited.yaml" />
-    <arg name="c2g_map" default="$(find mushr_rhc_ros)/maps/real-floor0-edited-c2g.yaml" />
+    <arg name="c2g_map" default="$(find mushr_rhc_ros)/maps/real-floor0-edited-c2g-full-loop.yaml" />
 
     <node pkg="map_server" name="map_server" type="map_server" args="$(arg map)" />
     <node pkg="map_server" name="c2g_map" type="map_server" args="$(arg c2g_map)">
@@ -9,5 +9,5 @@
         <remap from="/map" to="/c2g/map" />
     </node>
 
-    <param name="map_file" value="$(arg map)" />
+    <param name="map_file" value="$(arg c2g_map)" />
 </launch>
