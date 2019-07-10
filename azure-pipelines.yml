@@ -17,7 +17,11 @@ steps:
     git clone https://github.com/prl-mushr/devtools.git $(devtools)
     # Setup user account
     $(devtools)/setup_user/setup_user.sh
-    source ~/.bashrc
+    . ~/.bashrc
+    env |grep "ROS"
+    which flake8
+    which isort
+    which black
 
 # Run linters and tests
 - task: Bash@3
