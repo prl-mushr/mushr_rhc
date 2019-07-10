@@ -1,26 +1,54 @@
 variables:
   azure_tmpdir: $(Agent.TempDirectory)
-  mushr_dir: $(azure_tmpdir)/mushr_test
-  docker_user: developer
+  devtools: $(azure_tmpdir)/devtools
+  devtools_bin: $(devtools)/bin
+  test_dir: mushr_rhc_ros/test
 
 pool:
   vmImage: 'ubuntu-16.04'
 
+container: prlmushr/mushr:xenial
+
+# Get CI tooling and setup user account
 steps:
 - bash: |
-          set -ex
-          docker run -v $PWD:/home/$(docker_user)/$(azure) personalrobotics/mushr:xenial /bin/bash -c 'set -ex'
-- bash: git clone https://github.com/colinxs/mushr_test.git $(mushr_dir)
-#- bash: $(mushr_dir)/ci/black.sh . condapython3 check_only
-#- bash: cat $(mushr_dir)/ci/black.sh
-#- bash: echo $(which condapython3)
-#- bash: ll ~/
-#- bash: cat ~/.bashrc
-#- task: Bash@3
-#  inputs:
-#    filePath: $(mushr_dir)/ci/black.sh
-#    arguments: . condapython3 check_only
-#   noRc: false
-#    noProfile: false
-#- bash: $(mushr_dir)/ci/flake8.sh . python2
+    set -ex
+    # Get CI tooling
+    git clone https://github.com/prl-mushr/devtools.git $(devtools)
+    # Setup user account
+    $(devtools)/setup_user/setup_user.sh
+    source ~/.bashrc
 
+# Run linters and tests
+- task: Bash@3
+  inputs:
+    script: $(devtools_bin)/mushr_lint_flake8 .
+    targetType: inline
+    noRc: false
+    noProfile: false
+  condition: succeededOrFailed()
+  displayName: Run flake8
+- task: Bash@3
+  inputs:
+    script: $(devtools_bin)/mushr_lint_isort . --check
+    targetType: inline
+    noRc: false
+    noProfile: false
+  condition: succeededOrFailed()
+  displayName: Run isort
+- task: Bash@3
+  inputs:
+    script: $(devtools_bin)/mushr_lint_black . --check
+    targetType: inline
+    noRc: false
+    noProfile: false
+  condition: succeededOrFailed()
+  displayName: Run black
+- task: Bash@3
+  inputs:
+    script: python -m nose2 -v --pretty-assert -s $(test_dir)
+    targetType: inline
+    noRc: false
+    noProfile: false
+  condition: succeededOrFailed()
+  displayName: Run nose2
