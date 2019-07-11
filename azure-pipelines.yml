@@ -17,7 +17,9 @@ steps:
     git clone https://github.com/prl-mushr/devtools.git $(devtools)
     # Setup user account
     $(devtools)/setup_user/setup_user.sh
-    . ~/.bashrc
+    env |grep "ROS"
+    source ~/.bashrc
+    cat ~/.bashrc
     env |grep "ROS"
     which flake8
     which isort
