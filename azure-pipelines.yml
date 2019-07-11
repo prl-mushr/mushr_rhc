@@ -19,8 +19,9 @@ steps:
     $(devtools)/setup_user/setup_user.sh
     env |grep "ROS"
     source ~/.bashrc
-    cat ~/.bashrc
-    env |grep "ROS"
+    python -m flake8 -h
+    python -m isort -h
+    python -m black -h
     which flake8
     which isort
     which black
