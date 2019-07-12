@@ -13,6 +13,9 @@ jobs:
   container: prlmushr/mushr:xenial
 
   steps:
+  - script: git clone https://github.com/prl-mushr/devtools.git $(devtools)
+    displayName: Get devtools
+
   - bash: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
