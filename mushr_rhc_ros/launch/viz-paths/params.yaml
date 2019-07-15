@@ -1,6 +1,4 @@
 traj_chosen_topic: '/rhcontroller/traj_chosen'
-use_sim_pose: false
-use_odom_pose: true
 
 debug:
     ip_topic: '/sim_car_pose/pose'

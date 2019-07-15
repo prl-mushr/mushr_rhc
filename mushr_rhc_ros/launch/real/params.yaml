@@ -1,5 +1,2 @@
-use_sim_pose: false
-use_odom_pose: true
-
 profile: false
 debug: {}
