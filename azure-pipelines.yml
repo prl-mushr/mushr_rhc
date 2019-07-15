@@ -23,19 +23,35 @@ jobs:
       echo "##vso[task.prependpath]$HOME/miniconda/bin"
       conda config --set always_yes yes --set changeps1 no
       conda update -q conda
-      conda info -a
-      which conda
-      conda --version
+
       echo $PATH
-      source $HOME/miniconda/etc/profile.d/conda.sh
+      #source $HOME/miniconda/etc/profile.d/conda.sh
     displayName: 'Setup conda/install dependencies'
 
   - bash: |
-      echo $PATH
-      conda env create --quiet --file $(devtools)/lint-env.yaml
+      conda env create --yes --file $(devtools)/lint-env.yaml
     displayName: Create Anaconda environment
 
   - bash: |
       source activate lint
-      $(devtools)/bin/mushr_lint_flake8
-    displayName: flake8
+      $(devtools)/bin/mushr_lint_flake8 .
+    displayName: Run flake8
+
+  - bash: |
+      source activate lint
+      $(devtools)/mushr_lint_isort . --check
+    displayName: Run isort
+
+  - bash: |
+      source activate lint
+      $(devtools)/mushr_lint_black . --check
+    displayName: Run black
+
+  - bash: |
+      source activate lint
+      sudo rosdep init
+      rosdep update
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      python -m nose2 -v --pretty-assert -s $(test_dir)
+    displayName: Run tests (nose2)
