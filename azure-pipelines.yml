@@ -34,19 +34,19 @@ jobs:
 
   - bash: |
       source activate lint
-      $(devtools)/bin/mushr_lint_flake8 .
+      $(devtools_bin)/bin/mushr_lint_flake8 .
     displayName: Run flake8
     condition: succeededOrFailed()
 
   - bash: |
       source activate lint
-      $(devtools)/mushr_lint_isort . --check
+      $(devtools_bin)/mushr_lint_isort . --check
     displayName: Run isort
     condition: succeededOrFailed()
 
   - bash: |
       source activate lint
-      $(devtools)/mushr_lint_black . --check
+      $(devtools_bin)/mushr_lint_black . --check
     displayName: Run black
     condition: succeededOrFailed()
 
