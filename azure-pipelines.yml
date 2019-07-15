@@ -31,10 +31,15 @@ jobs:
       source $HOME/miniconda/etc/profile.d/conda.sh
     displayName: 'Setup conda/install dependencies'
 
-  - script: conda env create --quiet --file $(devtools)/lint-env.yaml
+  - bash: |
+      conda env create --quiet --file $(devtools)/lint-env.yaml
     displayName: Create Anaconda environment
+    noProfile: false
+    noRc: false
 
   - bash: |
       source activate lint
       $(devtools)/bin/mushr_lint_flake8
     displayName: flake8
+    noProfile: false
+    noRc: false
