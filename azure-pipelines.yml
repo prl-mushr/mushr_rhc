@@ -16,8 +16,20 @@ jobs:
   - script: git clone https://github.com/prl-mushr/devtools.git $(devtools)
     displayName: Get devtools
 
-  - bash: echo "##vso[task.prependpath]$CONDA/bin"
-    displayName: Add conda to PATH
+  - bash: |
+      - sudo apt-get update
+      - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+      - bash miniconda.sh -b -p $HOME/miniconda
+      - export PATH="$HOME/miniconda/bin:$PATH"
+      - hash -r
+      - conda config --set always_yes yes --set changeps1 no
+      - conda update -q conda
+      - conda info -a
+      - which conda
+      - conda --version
+      - echo $PATH
+      - source $HOME/miniconda/etc/profile.d/conda.sh
+    displayName: 'Setup conda/install dependencies'
 
   - script: conda env create --quiet --file $(devtools)/lint-env.yaml
     displayName: Create Anaconda environment
