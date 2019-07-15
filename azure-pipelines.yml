@@ -7,7 +7,6 @@ jobs:
   variables:
     azure_tmpdir: $(Agent.TempDirectory)
     devtools: $(azure_tmpdir)/devtools
-    devtools_bin: $(devtools)/bin
     test_dir: mushr_rhc_ros/test
 
   container: prlmushr/mushr:xenial
@@ -23,9 +22,6 @@ jobs:
       echo "##vso[task.prependpath]$HOME/miniconda/bin"
       conda config --set always_yes yes --set changeps1 no
       conda update -q conda
-
-      echo $PATH
-      #source $HOME/miniconda/etc/profile.d/conda.sh
     displayName: 'Setup conda/install dependencies'
 
   - bash: |
@@ -34,19 +30,19 @@ jobs:
 
   - bash: |
       source activate lint
-      $(devtools_bin)/bin/mushr_lint_flake8 .
+      $(devtools)/bin/mushr_lint_flake8 .
     displayName: Run flake8
     condition: succeededOrFailed()
 
   - bash: |
       source activate lint
-      $(devtools_bin)/mushr_lint_isort . --check
+      $(devtools)/bin/mushr_lint_isort . --check
     displayName: Run isort
     condition: succeededOrFailed()
 
   - bash: |
       source activate lint
-      $(devtools_bin)/mushr_lint_black . --check
+      $(devtools)/bin/mushr_lint_black . --check
     displayName: Run black
     condition: succeededOrFailed()
 
