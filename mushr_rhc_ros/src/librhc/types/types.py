@@ -2,7 +2,17 @@ import numpy as np
 
 
 class MapData:
-    def __init__(self, name, resolution, origin_x, origin_y, orientation_angle, width, height, get_map_data):
+    def __init__(
+        self,
+        name,
+        resolution,
+        origin_x,
+        origin_y,
+        orientation_angle,
+        width,
+        height,
+        get_map_data,
+    ):
         self.name = name
         self.resolution = resolution
         self.origin_x, self.origin_y = origin_x, origin_y

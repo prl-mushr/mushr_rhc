@@ -1,8 +1,10 @@
-import numpy as np
 import os
+
+import numpy as np
+
+import cache
 import rhctensor
 import torch
-import cache
 
 
 def world2map(mapdata, poses, out=None):
@@ -16,8 +18,8 @@ def world2map(mapdata, poses, out=None):
     scale = float(mapdata.resolution)
 
     # translation
-    out[:, 0].sub_(mapdata.origin_x).mul_(1.0/scale)
-    out[:, 1].sub_(mapdata.origin_y).mul_(1.0/scale)
+    out[:, 0].sub_(mapdata.origin_x).mul_(1.0 / scale)
+    out[:, 1].sub_(mapdata.origin_y).mul_(1.0 / scale)
     out[:, 2] += mapdata.angle
 
     xs = out[:, 0]
@@ -36,7 +38,7 @@ def world2mapnp(mapdata, poses):
     poses[:, 1] -= mapdata.origin_y
 
     # scale
-    poses[:, :2] *= (1.0 / float(mapdata.resolution))
+    poses[:, :2] *= 1.0 / float(mapdata.resolution)
 
     # we need to store the x coordinates since they will be overwritten
     temp = np.copy(poses[:, 0])
