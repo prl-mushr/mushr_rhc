@@ -1,24 +1,25 @@
-import librhc.utils as utils
+import os
+from threading import Event
+
 import networkx as nx
 import numpy as np
-import os
-import torch
-
 from scipy.interpolate import interp1d
 from sklearn.neighbors import NearestNeighbors
-from threading import Event
+
+import librhc.utils as utils
+import torch
 
 
 def next_prime():
     def is_prime(num):
         "Checks if num is a prime value"
-        for i in range(2, int(num**0.5)+1):
-            if(num % i) == 0:
+        for i in range(2, int(num ** 0.5) + 1):
+            if (num % i) == 0:
                 return False
         return True
 
     prime = 3
-    while(1):
+    while 1:
         if is_prime(prime):
             yield prime
         prime += 2
@@ -29,7 +30,7 @@ def vdc(n, base=2):
     while n:
         denom *= base
         n, remainder = divmod(n, base)
-        vdc += remainder/float(denom)
+        vdc += remainder / float(denom)
     return vdc
 
 
@@ -62,7 +63,9 @@ class SimpleKNN:
         if os.path.isfile(halton_pts_file):
             self.points = np.load(halton_pts_file)
         else:
-            self.points = self._iterative_sample_seq(h, w, nhalton, self._halton_sampler)
+            self.points = self._iterative_sample_seq(
+                h, w, nhalton, self._halton_sampler
+            )
             np.save(halton_pts_file, self.points)
 
     def _halton_sampler(self, h, w, n):
@@ -88,7 +91,7 @@ class SimpleKNN:
                 if self.perm_region[y, x] == 0:
                     valid.append((y, x))
             n += inc
-            print "valid points len: " + str(len(valid))
+            print("valid points len: " + str(len(valid)))
         return np.array(valid)
 
     def set_goal(self, goal, n_neighbors=7, k=3):
@@ -110,10 +113,12 @@ class SimpleKNN:
         map_goal = np.array([[map_goal[0, 1], map_goal[0, 0]]])
         pts_w_goal = np.concatenate((self.points, map_goal), axis=0)
 
-        self.goal_i = pts_w_goal.shape[0]-1
+        self.goal_i = pts_w_goal.shape[0] - 1
 
         # Create a single source shortest path
-        nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm='ball_tree').fit(pts_w_goal)
+        nbrs = NearestNeighbors(n_neighbors=n_neighbors, algorithm="ball_tree").fit(
+            pts_w_goal
+        )
         distances, indices = nbrs.kneighbors(pts_w_goal)
         elist = []
         for idx_set in indices:
@@ -140,7 +145,9 @@ class SimpleKNN:
 
         self._viz_halton()
 
-        self.nbrs = NearestNeighbors(n_neighbors=k, algorithm='ball_tree').fit(self.reachable_pts)
+        self.nbrs = NearestNeighbors(n_neighbors=k, algorithm="ball_tree").fit(
+            self.reachable_pts
+        )
         self.goal_event.set()
         return True
 
@@ -169,9 +176,9 @@ class SimpleKNN:
         m.pose.orientation.y = 0.0
         m.pose.orientation.z = 0.0
         m.pose.orientation.w = 1.0
-        m.scale.x = .1
-        m.scale.y = .1
-        m.scale.z = .1
+        m.scale.x = 0.1
+        m.scale.y = 0.1
+        m.scale.z = 0.1
         max_d = np.max(self.reachable_dst)
         for i, pts in enumerate(hp):
             p = Point()
@@ -197,7 +204,7 @@ class SimpleKNN:
         for x, y in zip(xs, ys):
             if self.perm_region[int(x), int(y)] == 1:
                 return -1
-        return np.linalg.norm(src-dst)
+        return np.linalg.norm(src - dst)
 
     def get_value(self, input_poses, resolution=None):
         """
@@ -229,7 +236,7 @@ class SimpleKNN:
             idx_set = indices[i]
             min_len = 10e5
             for j, n in enumerate(idx_set):
-                min_len = min(2*self.reachable_dst[n]+distances[i][j], min_len)
+                min_len = min(2 * self.reachable_dst[n] + distances[i][j], min_len)
             result[i] = min_len
 
         return torch.from_numpy(result).type(self.dtype) * self.map.resolution

@@ -1,9 +1,9 @@
-import torch
 import numpy as np
-import rhctensor
+from scipy import ndimage
 
 import librhc.utils as utils
-from scipy import ndimage
+import rhctensor
+import torch
 
 
 class Simple:
@@ -36,11 +36,14 @@ class Simple:
         self.car_length = self.params.get_float("world_rep/car_length", default=0.55)
         self.car_width = self.params.get_float("world_rep/car_width", default=0.30)
 
-        self.dist_field = ndimage.distance_transform_edt(np.logical_not(self.perm_reg.cpu().numpy()))
+        self.dist_field = ndimage.distance_transform_edt(
+            np.logical_not(self.perm_reg.cpu().numpy())
+        )
 
         self.dist_field *= self.map.resolution
-        self.dist_field[self.dist_field <= self.epsilon] = \
-            (1 / (2 * self.epsilon)) * (self.dist_field[self.dist_field <= self.epsilon] - self.epsilon) ** 2
+        self.dist_field[self.dist_field <= self.epsilon] = (1 / (2 * self.epsilon)) * (
+            self.dist_field[self.dist_field <= self.epsilon] - self.epsilon
+        ) ** 2
         self.dist_field[self.dist_field > self.epsilon] = 0
         self.dist_field = torch.from_numpy(self.dist_field).type(self.dtype)
 
@@ -57,8 +60,6 @@ class Simple:
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
-        print xs
-        print ys
 
         self.perm.zero_()
         self.perm |= self.perm_reg[ys, xs]
@@ -78,12 +79,14 @@ class Simple:
         W = self.car_width
 
         # Specify specs of bounding box
-        bbox = self.dtype([
-            [L / 2.0, W / 2.0],
-            [L / 2.0, -W / 2.0],
-            [-L / 2.0, W / 2.0],
-            [-L / 2.0, -W / 2.0]
-        ])
+        bbox = self.dtype(
+            [
+                [L / 2.0, W / 2.0],
+                [L / 2.0, -W / 2.0],
+                [-L / 2.0, W / 2.0],
+                [-L / 2.0, -W / 2.0],
+            ]
+        )
 
         bbox.div_(self.map.resolution)
 

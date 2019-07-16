@@ -1,16 +1,19 @@
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 import rospy
-import torch
-
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
 
-_traj_pub = rospy.Publisher(rospy.get_param("~debug/viz_rollouts/topic", "~debug/viz_rollouts"),
-                            MarkerArray, queue_size=100)
+import torch
+
+_traj_pub = rospy.Publisher(
+    rospy.get_param("~debug/viz_rollouts/topic", "~debug/viz_rollouts"),
+    MarkerArray,
+    queue_size=100,
+)
 
 
-def viz_paths_cmap(poses, costs, ns="paths", cmap='plasma', scale=.03):
+def viz_paths_cmap(poses, costs, ns="paths", cmap="plasma", scale=0.03):
     max_c = torch.max(costs)
     min_c = torch.min(costs)
 
@@ -31,7 +34,7 @@ def viz_paths_cmap(poses, costs, ns="paths", cmap='plasma', scale=.03):
     return viz_paths(poses, costs, colorfn, ns, scale)
 
 
-def viz_paths(poses, costs, colorfn, ns="paths", scale=.03):
+def viz_paths(poses, costs, colorfn, ns="paths", scale=0.03):
     """
         poses should be an array of trajectories to plot in rviz
         costs should have the same dimensionality as poses.size()[0]

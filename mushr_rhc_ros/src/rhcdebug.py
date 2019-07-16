@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 
-import logger
+import threading
+
 import matplotlib.cm as cm
 import matplotlib.colors as mplcolors
+import rospy
+from geometry_msgs.msg import PoseArray, PoseStamped, PoseWithCovarianceStamped
+from std_msgs.msg import ColorRGBA
+from visualization_msgs.msg import Marker
+
+import logger
 import parameters
 import rhcbase
 import rhctensor
-import rospy
-import threading
 import torch
 import utils
-
-from std_msgs.msg import ColorRGBA
-from geometry_msgs.msg import PoseArray, PoseStamped, PoseWithCovarianceStamped
-from visualization_msgs.msg import Marker
 
 
 class RHCDebug(rhcbase.RHCBase):
@@ -30,8 +31,12 @@ class RHCDebug(rhcbase.RHCBase):
         self.init_pose = None
 
         self.goal = None
-        self.debug_rollouts = self.params.get_bool("debug/flag/rollouts_on_init_pose", default=False)
-        self.debug_current_path = self.params.get_bool("debug/flag/current_path", default=False)
+        self.debug_rollouts = self.params.get_bool(
+            "debug/flag/rollouts_on_init_pose", default=False
+        )
+        self.debug_current_path = self.params.get_bool(
+            "debug/flag/current_path", default=False
+        )
 
         self.current_path = Marker()
         self.current_path.header.frame_id = "map"
@@ -54,12 +59,20 @@ class RHCDebug(rhcbase.RHCBase):
         rospy.Subscriber("/initialpose", PoseWithCovarianceStamped, self.cb_initialpose)
 
         if self.debug_current_path:
-            ip_topic = self.params.get_str("debug/ip_topic")
-            rospy.Subscriber(ip_topic, PoseStamped, self.cb_inferred_pose, queue_size=10)
+            rospy.Subscriber(
+                rospy.get_param("~inferred_pose_t"),
+                PoseStamped,
+                self.cb_inferred_pose,
+                queue_size=10,
+            )
 
-            self.current_path_pub = rospy.Publisher("~current_path", Marker, queue_size=10)
+            self.current_path_pub = rospy.Publisher(
+                "~current_path", Marker, queue_size=10
+            )
 
-        rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1)
+        rospy.Subscriber(
+            "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
+        )
         self.goal_pub = rospy.Publisher("~goal", Marker, queue_size=10)
 
         # self.value_heat_map_pub = rospy.Publisher("~value_fn", Marker, queue_size=100)
@@ -158,20 +171,19 @@ class RHCDebug(rhcbase.RHCBase):
             for j in range(150, self.map_data.height - 150, 50):
                 rospoints.append(self.dtype([i, j]).mul_(self.map_data.resolution))
 
-        print self.map_data.resolution
+        print(self.map_data.resolution)
         rospoints = torch.stack(rospoints)
-        print rospoints
+        print(rospoints)
 
-        print self.map_data.height, self.map_data.width
+        print(self.map_data.height, self.map_data.width)
         K = self.params.get_int("K")
         T = self.params.get_int("T")
 
         # Filter colliding points
         collisions = self.dtype(K * T, 3)
         for i in range(0, len(rospoints), K * T):
-            print i
             end = min(len(rospoints) - i, K * T)
-            collisions[:end, :2] = rospoints[i:i+end]
+            collisions[:end, :2] = rospoints[i : i + end]
             col = self.rhctrl.cost.world_rep.collisions(collisions)
             for p, c in zip(collisions[:end], col[:end]):
                 if c == 0:
@@ -181,17 +193,17 @@ class RHCDebug(rhcbase.RHCBase):
         colors = []
         for i in range(0, len(m.points), K):
             end = min(len(m.points) - i, K)
-            points[:end, 0] = self.dtype(map(lambda p: p.x, m.points[i: i+end]))
-            points[:end, 1] = self.dtype(map(lambda p: p.y, m.points[i: i+end]))
+            points[:end, 0] = self.dtype(map(lambda p: p.x, m.points[i : i + end]))
+            points[:end, 1] = self.dtype(map(lambda p: p.y, m.points[i : i + end]))
 
             c2g = self.rhctrl.cost.value_fn.get_value(points)
 
             colors.extend(map(float, list(c2g)[:end]))
 
-        print colors
+        print(colors)
 
         norm = mplcolors.Normalize(vmin=min(colors), vmax=max(colors))
-        cmap = cm.get_cmap('coolwarm')
+        cmap = cm.get_cmap("coolwarm")
 
         def colorfn(cost):
             col = cmap(norm(cost))
@@ -205,7 +217,9 @@ class RHCDebug(rhcbase.RHCBase):
 
     def viz_traj_chosen_trace(self):
         traj_chosen_topic = self.params.get_str("traj_chosen_topic")
-        rospy.Subscriber(traj_chosen_topic, PoseArray, self.cb_traj_chosen, queue_size=10)
+        rospy.Subscriber(
+            traj_chosen_topic, PoseArray, self.cb_traj_chosen, queue_size=10
+        )
         self.traj_chosen_pub = rospy.Publisher("~traj_chosen", Marker, queue_size=10)
         rate = rospy.Rate(self.params.get_int("debug/traj_chosen_trace/rate"))
         while not rospy.is_shutdown():
@@ -254,7 +268,7 @@ class RHCDebug(rhcbase.RHCBase):
         rospy.spin()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     params = parameters.RosParams()
     logger = logger.RosLog()
     node = RHCDebug(rhctensor.float_tensor(), params, logger, "rhcdebugger")

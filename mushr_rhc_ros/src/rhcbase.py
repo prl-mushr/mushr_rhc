@@ -1,39 +1,27 @@
-import librhc
 import os
+
 import rospy
-import utils
-
-from nav_msgs.srv import GetMap
 from nav_msgs.msg import MapMetaData
+from nav_msgs.srv import GetMap
 
+import librhc
 import librhc.cost as cost
 import librhc.model as model
 import librhc.trajgen as trajgen
-import librhc.value as value
 import librhc.types as types
+import librhc.value as value
 import librhc.worldrep as worldrep
+import utils
 
+motion_models = {"kinematic": model.Kinematics}
 
-motion_models = {
-    "kinematic": model.Kinematics,
-}
+trajgens = {"tl": trajgen.TL, "dispersion": trajgen.Dispersion}
 
-trajgens = {
-    "tl": trajgen.TL,
-    "dispersion": trajgen.Dispersion,
-}
+cost_functions = {"waypoints": cost.Waypoints}
 
-cost_functions = {
-    "waypoints": cost.Waypoints,
-}
+value_functions = {"simpleknn": value.SimpleKNN}
 
-value_functions = {
-    "simpleknn": value.SimpleKNN,
-}
-
-world_reps = {
-    "simple": worldrep.Simple,
-}
+world_reps = {"simple": worldrep.Simple}
 
 
 class RHCBase(object):
@@ -42,7 +30,9 @@ class RHCBase(object):
         self.params = params
         self.logger = logger
 
-        rospy.Subscriber("/map_metadata", MapMetaData, self.cb_map_metadata, queue_size=1)
+        rospy.Subscriber(
+            "/map_metadata", MapMetaData, self.cb_map_metadata, queue_size=1
+        )
         self.map_data = None
 
     def load_controller(self):
@@ -50,10 +40,7 @@ class RHCBase(object):
         tg = self.get_trajgen(m)
         cf = self.get_cost_fn()
 
-        return librhc.MPC(self.params,
-                          self.logger,
-                          self.dtype,
-                          m, tg, cf)
+        return librhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
 
     def get_model(self):
         mname = self.params.get_str("model_name", default="kinematic")
@@ -89,21 +76,26 @@ class RHCBase(object):
         if vfname not in value_functions:
             self.logger.fatal("value_fn '{}' is not valid".format(vfname))
 
-        vf = value_functions[vfname](self.params, self.logger, self.dtype, self.map_data)
+        vf = value_functions[vfname](
+            self.params, self.logger, self.dtype, self.map_data
+        )
 
-        return cost_functions[cfname](self.params,
-                                      self.logger,
-                                      self.dtype,
-                                      self.map_data, wr, vf)
+        return cost_functions[cfname](
+            self.params, self.logger, self.dtype, self.map_data, wr, vf
+        )
 
     def cb_map_metadata(self, msg):
         default_map_name = "default"
-        map_file = self.params.get_str("map_file", default=default_map_name, global_=True)
+        map_file = self.params.get_str(
+            "map_file", default=default_map_name, global_=True
+        )
         name = os.path.splitext(os.path.basename(map_file))[0]
 
         if name is default_map_name:
-            rospy.logwarn("Default map name being used, will be corrupted on map change. " +
-                          "To fix, set '/map_file' parameter with map_file location")
+            rospy.logwarn(
+                "Default map name being used, will be corrupted on map change. "
+                + "To fix, set '/map_file' parameter with map_file location"
+            )
 
         x, y, angle = utils.rospose_to_posetup(msg.origin)
         self.map_data = types.MapData(
@@ -114,7 +106,7 @@ class RHCBase(object):
             orientation_angle=angle,
             width=msg.width,
             height=msg.height,
-            get_map_data=self.get_map
+            get_map_data=self.get_map,
         )
 
     def get_map(self):
