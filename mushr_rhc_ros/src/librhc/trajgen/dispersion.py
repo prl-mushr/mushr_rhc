@@ -50,7 +50,7 @@ class Dispersion:
 
         # TODO: Have a cache system for these trajectories that would get
         # loaded here instead of doing needless computation
-        dispersion_dir = utils.get_cache_dir(
+        dispersion_dir = utils.cache.get_cache_dir(
             self.params, os.path.join("trajgen", "dispersion")
         )
         dispersion_name = "-".join(

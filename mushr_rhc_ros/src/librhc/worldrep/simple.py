@@ -19,7 +19,7 @@ class Simple:
         self.logger = logger
         self.dtype = dtype
         self.map = map
-        self.perm_reg = utils.load_permissible_region(self.params, self.map)
+        self.perm_reg = utils.map.load_permissible_region(self.params, self.map)
 
         self.reset()
 
@@ -56,7 +56,7 @@ class Simple:
         """
         assert poses.size() == (self.K * self.T, 3)
 
-        utils.world2map(self.map, poses, out=self.scaled)
+        utils.map.world2map(self.map, poses, out=self.scaled)
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
@@ -73,7 +73,7 @@ class Simple:
     def check_collision_in_map(self, poses):
         assert poses.size() == (self.K * self.T, 3)
 
-        utils.world2map(self.map, poses, out=self.scaled)
+        utils.map.world2map(self.map, poses, out=self.scaled)
 
         L = self.car_length
         W = self.car_width
@@ -121,7 +121,7 @@ class Simple:
             (K * T, tensor) with distances in terms of map frame
         """
 
-        utils.world2map(self.map, poses, out=self.scaled)
+        utils.map.world2map(self.map, poses, out=self.scaled)
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()

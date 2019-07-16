@@ -54,11 +54,11 @@ class SimpleKNN:
         self.goal_i = None
         self.goal_event = Event()
 
-        self.perm_region = utils.load_permissible_region(self.params, map)
+        self.perm_region = utils.map.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
         nhalton = self.params.get_int("value/simpleknn/nhalton", default=3000)
-        map_cache = utils.get_cache_map_dir(self.params, self.map)
+        map_cache = utils.cache.get_cache_map_dir(self.params, self.map)
         halton_pts_file = os.path.join(map_cache, "halton-{}.npy".format(nhalton))
         if os.path.isfile(halton_pts_file):
             self.points = np.load(halton_pts_file)
@@ -107,7 +107,7 @@ class SimpleKNN:
         # Convert "world" goal to "map" coordinates
         goal = goal.unsqueeze(0)
         map_goal = self.dtype(goal.size())
-        utils.world2map(self.map, goal, out=map_goal)
+        utils.map.world2map(self.map, goal, out=map_goal)
 
         # Add goal to points on the map so we can create a single source shortest path from it
         map_goal = np.array([[map_goal[0, 1], map_goal[0, 0]]])
@@ -160,7 +160,7 @@ class SimpleKNN:
         hp = np.zeros((len(self.reachable_pts), 3))
         hp[:, 0] = self.reachable_pts[:, 1]
         hp[:, 1] = self.reachable_pts[:, 0]
-        utils.map2worldnp(self.map, hp)
+        utils.map.map2worldnp(self.map, hp)
 
         m = Marker()
         m.header.frame_id = "map"
@@ -224,7 +224,7 @@ class SimpleKNN:
             return torch.zeros(len(input_poses)).type(self.dtype)
 
         input_points = input_poses.clone().cpu().numpy()
-        utils.world2mapnp(self.map, input_points)
+        utils.map.world2mapnp(self.map, input_points)
 
         input_points_corrected = input_points.copy()
         input_points_corrected[:, 0] = input_points[:, 1]

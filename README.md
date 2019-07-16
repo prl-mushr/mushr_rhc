@@ -1,3 +1,5 @@
+[![Build Status](https://dev.azure.com/prl-mushr/mushr_rhc/_apis/build/status/prl-mushr.mushr_rhc?branchName=master)](https://dev.azure.com/prl-mushr/mushr_rhc/_build/latest?definitionId=1&branchName=master)
+
 # Receding Horizon Control
 
 This module hosts the RHC controller first implemented on MuSHR stack. It is a model predictive contoller that plans to waypoints from a goal (instead of a reference trajectory). This controller is suitable for cars that don't have a planning module, but want simple MPC.
