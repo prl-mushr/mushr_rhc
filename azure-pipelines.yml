@@ -30,27 +30,22 @@ jobs:
 
   - bash: |
       source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
       $(devtools)/bin/mushr_lint_flake8 .
-    displayName: Run flake8
-    condition: succeededOrFailed()
-
-  - bash: |
-      source activate lint
       $(devtools)/bin/mushr_lint_isort . --check
-    displayName: Run isort
-    condition: succeededOrFailed()
-
-  - bash: |
-      source activate lint
       $(devtools)/bin/mushr_lint_black . --check
-    displayName: Run black
+    displayName: Lint
     condition: succeededOrFailed()
 
   - bash: |
       source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
       sudo rosdep init
       rosdep update
-      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      # You can add any preamble here (install packages, load configuration, etc.) to setup testing
 
       python -m nose2 -v --pretty-assert -s $(test_dir)
     displayName: Run tests (nose2)
