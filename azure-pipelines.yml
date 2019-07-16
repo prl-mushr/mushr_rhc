@@ -15,29 +15,44 @@ jobs:
   - script: git clone https://github.com/prl-mushr/devtools.git $(devtools)
     displayName: Get devtools
 
-  #- bash: |
-  #    sudo apt-get update
-  #    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-  #    bash miniconda.sh -b -p $HOME/miniconda
-  #    echo "##vso[task.prependpath]$HOME/miniconda/bin"
-  #  displayName: 'Get conda and add to path'
-
-  #- bash: |
-  #    conda config --set always_yes yes --set changeps1 no
-  #    conda update -q conda
-  #    conda env create --file $(devtools)/lint-env.yaml
-  #  displayName: Install dependencies and create Anaconda environment
-  - script: echo "##vso[task.prependpath]/opt/miniconda/bin"      
-    displayName: 'Add conda to path'
+  - bash: |
+      sudo apt-get update
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+      bash miniconda.sh -b -p $HOME/miniconda
+      echo "##vso[task.prependpath]$HOME/miniconda/bin"
+    displayName: 'Get conda and add to path'
 
   - bash: |
+      conda config --set always_yes yes --set changeps1 no
+      conda update -q conda
+      conda env create --file $(devtools)/lint-env.yaml
+    displayName: Install dependencies and create Anaconda environment
+
+  - bash: |
+      set -e
       source activate lint
       source /opt/ros/"$ROS_DISTRO"/setup.bash
 
       $(devtools)/bin/mushr_lint_flake8 .
+    displayName: flake8
+    condition: succeededOrFailed()
+
+  - bash: |
+      set -e
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
       $(devtools)/bin/mushr_lint_isort . --check
+    displayName: isort
+    condition: succeededOrFailed()
+
+  - bash: |
+      set -e
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
       $(devtools)/bin/mushr_lint_black . --check
-    displayName: Lint
+    displayName: black
     condition: succeededOrFailed()
 
   - bash: |
