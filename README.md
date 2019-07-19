@@ -24,3 +24,29 @@ $ sudo apt install python-scipy
 $ sudo apt install python-networkx
 $ sudo apt install python-sklearn
 ```
+
+## `librhc` Layout
+`librhc` (`mushr_rhc_ros/src/librhc`) is the core MPC code, with the other source being ROS interfacing code.
+
+## `mushr_rhc_ros` ROS API
+
+#### Publishers
+Topic | Type | Description
+------|------|------------
+`/rhcontroller/markers`|[visualization_msgs/Marker](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html)|Halton points sampled in the map (for debugging purposes).
+`/rhcontroller/traj_chosen`|[geometry_msgs/PoseArray](http://docs.ros.org/api/geometry_msgs/html/msg/PoseArray.html)|The lowest cost trajectory (for debuggin purposes).
+`/mux/ackermann_cmd_mux/input/navigation`|[ackermann_msgs/AckermannDriveStamped](http://docs.ros.org/api/ackermann_msgs/html/msg/AckermannDriveStamped.html)|The lowest cost control to apply on the car.
+
+#### Subscribers
+Topic | Type | Description
+------|------|------------
+`/map_metadata`|[nav_msgs/MapMetaData](http://docs.ros.org/api/nav_msgs/html/msg/MapMetaData.html)|Uses dimension and resolution to create occupancy grid.
+`/move_base_simple/goal`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|Goal to compute path to.
+`/car_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using simulated car pose* Current pose of the car.
+`/pf/inferred_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using particle filter for localization* Current pose of the car.
+
+#### Services
+Topic | Type | Description
+------|------|------------
+`/rhcontroller/reset/hard`|[std_srvs/Empty](http://docs.ros.org/api/std_srvs/html/srv/Empty.html)|Creates a new instance of the MPC object, redoing all initialization computation.
+`/rhcontroller/reset/soft`|[std_srvs/Empty](http://docs.ros.org/api/std_srvs/html/srv/Empty.html)|Resets parameters only, not redoing initialization.
