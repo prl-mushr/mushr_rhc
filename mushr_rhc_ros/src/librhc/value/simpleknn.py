@@ -189,7 +189,7 @@ class SimpleKNN:
             m.points.append(p)
             m.colors.append(c)
 
-        pub = rospy.Publisher("/markers", Marker, queue_size=100)
+        pub = rospy.Publisher("~markers", Marker, queue_size=100)
         pub.publish(m)
 
     def _eval_edge(self, src, dst):
