@@ -1,4 +1,5 @@
 import threading
+
 import librhc.utils as utils
 
 
@@ -61,7 +62,10 @@ class MPC:
         # For each K trial, the first position is at the current position
         self.rollouts[:, 0] = state.expand_as(self.rollouts[:, 0])
 
-        v = min(self.desired_speed, self.desired_speed * (self.dist_to_goal(state) / (self.dist_horizon)))
+        v = min(
+            self.desired_speed,
+            self.desired_speed * (self.dist_to_goal(state) / (self.dist_horizon)),
+        )
         trajs = self.trajgen.get_control_trajectories(v)
         assert trajs.size() == (self.K, self.T, 2)
 
