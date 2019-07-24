@@ -26,7 +26,12 @@ $ sudo apt install python-sklearn
 ```
 
 ## `librhc` Layout
-`librhc` (`mushr_rhc_ros/src/librhc`) is the core MPC code, with the other source being ROS interfacing code.
+`librhc` (`mushr_rhc_ros/src/librhc`) is the core MPC code, with the other source being ROS interfacing code. The main components are:
+- Cost function (`librhc/cost`): Takes into account the cost-to-go, collisions and other information to produce a cost for a set of trajectories.
+- Model (`librhc/model`): A model of the car, currenly using the kinematic bicycle model.
+- Trajectory generation (`librhc/trajgen`): Strategies for generating trajectory libraries for MPC to evaluate.
+- Value function (`librhc/value`): Evaluation of positions of the car with resepct to a goal.
+- World Representation (`librhc/workrep`): An occupancy grid based representation for the map.
 
 ## `mushr_rhc_ros` ROS API
 
