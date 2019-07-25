@@ -28,6 +28,8 @@ class Waypoints:
         self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.04)
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost", default=100.0)
 
+        self.obs_dist_cooloff = torch.arange(1, self.T+1).mul_(2).type(self.dtype)
+
         self.discount = self.dtype(self.T-1)
         self.discount[:] = 1 + self.smoothing_discount_rate
         self.discount.pow_(torch.arange(0, self.T-1).type(self.dtype) * -1)
@@ -55,6 +57,7 @@ class Waypoints:
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
 
         obstacle_distances = self.world_rep.distances(all_poses).view(self.K, self.T)
+        obstacle_distances[:].mul_(self.obs_dist_cooloff)
 
         obs_dist_cost = obstacle_distances[:].sum(dim=1).mul(self.obs_dist_w)
 

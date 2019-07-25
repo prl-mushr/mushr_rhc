@@ -105,13 +105,15 @@ class RHCNode(rhcbase.RHCBase):
                              PoseStamped, self.cb_pose, queue_size=10)
 
         if self.params.get_bool("use_odom_pose", default=True):
-            rospy.Subscriber("/pf/viz/odom",
-                             Odometry, self.cb_odom, queue_size=10)
+            rospy.Subscriber("/pf/inferred_pose",
+                             PoseStamped, self.cb_pose, queue_size=10)
+            #rospy.Subscriber("/pf/inferred_pose",
+            #                 Odometry, self.cb_odom, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
                 "ctrl_topic",
-                default="/vesc/high_level/ackermann_cmd_mux/input/nav_0"
+                default="/mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped, queue_size=2
         )

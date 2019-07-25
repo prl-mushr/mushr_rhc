@@ -1,19 +1,19 @@
 T: 21
-K: 201
+K: 301
 trajgen_name: 'dispersion'
 horizon:
-    distance: 4.0
+    distance: 3.5
     time: -1.5
 trajgen:
     dispersion:
         samples: 9
-    desired_speed: 1.0
-    min_delta: -0.34
-    max_delta: 0.34
+    desired_speed: 2.5
+    min_delta: -0.38
+    max_delta: 0.38
 cost_fn:
-    obs_dist_w: 150.0
+    obs_dist_w: 86.0
     cost2go_w: 10.0
-    smoothing_discount_rate: 0.05
+    smoothing_discount_rate: 0.0
     bounds_cost: 1000.0
 world_rep:
-    epsilon: 0.7
+    epsilon: 0.6
