@@ -5,7 +5,7 @@
 This module hosts the RHC controller first implemented on MuSHR stack. It is a model predictive contoller that plans to waypoints from a goal (instead of a reference trajectory). This controller is suitable for cars that don't have a planning module, but want simple MPC.
 
 ## Installing on the car
-Note: if you are using the mushr image you can just clone the repo into `~/catkin_ws/src` and it should work out of the box
+**Note:** if you are using the mushr image you can just clone the repo into `~/catkin_ws/src` and it should work out of the box
 
 Get pip:
 ```
