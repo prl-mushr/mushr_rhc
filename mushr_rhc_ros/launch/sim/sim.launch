@@ -6,10 +6,10 @@
     <node pkg="mushr_rhc_ros" type="rhcnode.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <param name="cache_dir" value="~/mushr_rhc_cache/" />
+		<param name="inferred_pose_t" value="/car_pose" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
-        <rosparam file="$(find mushr_rhc_ros)/launch/all_params.yaml" />
+		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/sim/params.yaml" />
     </node>
 </launch>

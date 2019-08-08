@@ -25,12 +25,14 @@ class Waypoints:
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
         self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=5.0)
         self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
-        self.smoothing_discount_rate = self.params.get_float("cost_fn/smoothing_discount_rate", default=0.04)
+        self.smoothing_discount_rate = self.params.get_float(
+            "cost_fn/smoothing_discount_rate", default=0.04
+        )
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost", default=100.0)
 
-        self.discount = self.dtype(self.T-1)
+        self.discount = self.dtype(self.T - 1)
         self.discount[:] = 1 + self.smoothing_discount_rate
-        self.discount.pow_(torch.arange(0, self.T-1).type(self.dtype) * -1)
+        self.discount.pow_(torch.arange(0, self.T - 1).type(self.dtype) * -1)
         self.world_rep.reset()
 
     def apply(self, poses, goal):
@@ -48,10 +50,12 @@ class Waypoints:
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
         # use terminal distance (K, tensor)
-        cost2go = self.value_fn.get_value(poses[:, self.T-1, :]).mul(self.cost2go_w)
+        cost2go = self.value_fn.get_value(poses[:, self.T - 1, :]).mul(self.cost2go_w)
 
         # get all collisions (K, T, tensor)
-        collisions = self.world_rep.check_collision_in_map(all_poses).view(self.K, self.T)
+        collisions = self.world_rep.check_collision_in_map(all_poses).view(
+            self.K, self.T
+        )
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
 
         obstacle_distances = self.world_rep.distances(all_poses).view(self.K, self.T)
@@ -60,7 +64,12 @@ class Waypoints:
 
         # reward smoothness by taking the integral over the rate of change in poses,
         # with time-based discounting factor
-        smoothness = ((poses[:, 1:, 2] - poses[:, :self.T-1, 2])).abs().mul(self.discount).sum(dim=1)
+        smoothness = (
+            ((poses[:, 1:, 2] - poses[:, : self.T - 1, 2]))
+            .abs()
+            .mul(self.discount)
+            .sum(dim=1)
+        )
 
         result = cost2go.add(collision_cost).add(obs_dist_cost).add(smoothness)
 
@@ -74,7 +83,8 @@ class Waypoints:
             non_colliding = (collision_cost == 0).nonzero()
 
             if non_colliding.size()[0] > 0:
-                def print_n(c, poses, ns, cmap='coolwarm'):
+
+                def print_n(c, poses, ns, cmap="coolwarm"):
                     _, all_idx = torch.sort(c)
 
                     n = min(self.n_viz, len(c))
@@ -82,26 +92,40 @@ class Waypoints:
                     rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
 
                 p_non_colliding = poses[non_colliding].squeeze()
-                print_n(result[non_colliding].squeeze(), p_non_colliding, ns="final_result")
+                print_n(
+                    result[non_colliding].squeeze(), p_non_colliding, ns="final_result"
+                )
                 print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
-                print_n(collision_cost[non_colliding].squeeze(), p_non_colliding, ns="collision_cost")
-                print_n(obs_dist_cost[non_colliding].squeeze(), p_non_colliding, ns="obstacle_dist_cost")
-                print_n(smoothness[non_colliding].squeeze(), p_non_colliding, ns="smoothness")
+                print_n(
+                    collision_cost[non_colliding].squeeze(),
+                    p_non_colliding,
+                    ns="collision_cost",
+                )
+                print_n(
+                    obs_dist_cost[non_colliding].squeeze(),
+                    p_non_colliding,
+                    ns="obstacle_dist_cost",
+                )
+                print_n(
+                    smoothness[non_colliding].squeeze(),
+                    p_non_colliding,
+                    ns="smoothness",
+                )
 
                 if self.print_stats:
                     _, all_sorted_idx = torch.sort(result[non_colliding].squeeze())
                     n = min(self.n_viz, len(all_sorted_idx))
                     idx = all_sorted_idx[:n] if n > -1 else all_sorted_idx
 
-                    print "Final Result"
-                    print result[idx]
-                    print "Cost 2 Go"
-                    print cost2go[idx]
-                    print "Collision Cost"
-                    print collision_cost[idx]
-                    print "Obstacle Distance Cost"
-                    print obs_dist_cost[idx]
-                    print "Smoothness"
-                    print smoothness[idx]
+                    print("Final Result")
+                    print(result[idx])
+                    print("Cost 2 Go")
+                    print(cost2go[idx])
+                    print("Collision Cost")
+                    print(collision_cost[idx])
+                    print("Obstacle Distance Cost")
+                    print(obs_dist_cost[idx])
+                    print("Smoothness")
+                    print(smoothness[idx])
 
         return result

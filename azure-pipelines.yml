@@ -1,54 +1,74 @@
-variables:
-  azure_tmpdir: $(Agent.TempDirectory)
-  devtools: $(azure_tmpdir)/devtools
-  devtools_bin: $(devtools)/bin
-  test_dir: mushr_rhc_ros/test
+trigger:
+- master
+pr:
+- master
 
-pool:
-  vmImage: 'ubuntu-16.04'
+jobs:
+- job:
+  displayName: Run Linting and Tests
+  pool:
+    vmImage: 'ubuntu-16.04'
 
-container: prlmushr/mushr:xenial
+  variables:
+    azure_tmpdir: $(Agent.TempDirectory)
+    devtools: $(azure_tmpdir)/devtools
+    test_dir: mushr_rhc_ros/test
 
-# Get CI tooling and setup user account
-steps:
-- bash: |
-    set -ex
-    # Get CI tooling
-    git clone https://github.com/prl-mushr/devtools.git $(devtools)
-    # Setup user account
-    $(devtools)/setup_user/setup_user.sh
-    source ~/.bashrc
+  container: prlmushr/mushr:xenial
 
-# Run linters and tests
-- task: Bash@3
-  inputs:
-    script: $(devtools_bin)/mushr_lint_flake8 .
-    targetType: inline
-    noRc: false
-    noProfile: false
-  condition: succeededOrFailed()
-  displayName: Run flake8
-- task: Bash@3
-  inputs:
-    script: $(devtools_bin)/mushr_lint_isort . --check
-    targetType: inline
-    noRc: false
-    noProfile: false
-  condition: succeededOrFailed()
-  displayName: Run isort
-- task: Bash@3
-  inputs:
-    script: $(devtools_bin)/mushr_lint_black . --check
-    targetType: inline
-    noRc: false
-    noProfile: false
-  condition: succeededOrFailed()
-  displayName: Run black
-- task: Bash@3
-  inputs:
-    script: python -m nose2 -v --pretty-assert -s $(test_dir)
-    targetType: inline
-    noRc: false
-    noProfile: false
-  condition: succeededOrFailed()
-  displayName: Run nose2
+  steps:
+  - script: git clone https://github.com/prl-mushr/devtools.git $(devtools)
+    displayName: Get devtools
+
+  - bash: |
+      sudo apt-get update
+      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+      bash miniconda.sh -b -p $HOME/miniconda
+      echo "##vso[task.prependpath]$HOME/miniconda/bin"
+    displayName: 'Get conda and add to path'
+
+  - bash: |
+      conda config --set always_yes yes --set changeps1 no
+      conda update -q conda
+      conda env create --file $(devtools)/lint-env.yaml
+    displayName: Install dependencies and create Anaconda environment
+
+  - bash: |
+      set -e
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      $(devtools)/bin/mushr_lint_flake8 .
+    displayName: flake8
+    condition: succeededOrFailed()
+
+  - bash: |
+      set -e
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      $(devtools)/bin/mushr_lint_isort . --check
+    displayName: isort
+    condition: succeededOrFailed()
+
+  - bash: |
+      set -e
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      $(devtools)/bin/mushr_lint_black . --check
+    displayName: black
+    condition: succeededOrFailed()
+
+  - bash: |
+      source activate lint
+      source /opt/ros/"$ROS_DISTRO"/setup.bash
+
+      sudo rosdep init
+      rosdep update
+
+      # You can add any preamble here (install packages, load configuration, etc.) to setup testing
+
+      python -m nose2 -v --pretty-assert -s $(test_dir)
+    displayName: Run tests (nose2)
+    condition: succeededOrFailed()
