@@ -1,9 +1,10 @@
 import matplotlib.cm as cm
 import matplotlib.colors as colors
 import rospy
-import torch
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
+
+import torch
 
 _traj_pub = rospy.Publisher(
     rospy.get_param("~debug/viz_rollouts/topic", "~debug/viz_rollouts"),

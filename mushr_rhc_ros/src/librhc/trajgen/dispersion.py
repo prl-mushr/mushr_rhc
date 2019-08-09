@@ -1,10 +1,10 @@
 import os
 from itertools import product
 
-import torch
 from scipy.spatial.distance import directed_hausdorff
 
 import librhc.utils as utils
+import torch
 
 
 class Dispersion:
