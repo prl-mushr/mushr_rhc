@@ -30,9 +30,9 @@ class Waypoints:
         )
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost", default=100.0)
 
-        self.obs_dist_cooloff = torch.arange(1, self.T+1).mul_(2).type(self.dtype)
+        self.obs_dist_cooloff = torch.arange(1, self.T + 1).mul_(2).type(self.dtype)
 
-        self.discount = self.dtype(self.T-1)
+        self.discount = self.dtype(self.T - 1)
 
         self.discount[:] = 1 + self.smoothing_discount_rate
         self.discount.pow_(torch.arange(0, self.T - 1).type(self.dtype) * -1)

@@ -8,9 +8,9 @@ import threading
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Point, PoseStamped
-from visualization_msgs.msg import Marker
 from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
+from visualization_msgs.msg import Marker
 
 import logger
 import parameters
@@ -124,7 +124,7 @@ class RHCNode(rhcbase.RHCBase):
             queue_size=2,
         )
 
-        traj_chosen_t = self.params.get_str("traj_chosen_topic", default='~traj_chosen')
+        traj_chosen_t = self.params.get_str("traj_chosen_topic", default="~traj_chosen")
         self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
@@ -172,16 +172,20 @@ class RHCNode(rhcbase.RHCBase):
 
         if self.cur_rollout is not None and self.cur_rollout_ip is not None:
             m = Marker()
-            m.header.frame_id = 'map'
+            m.header.frame_id = "map"
             m.type = m.LINE_STRIP
             m.action = m.ADD
             with self.traj_pub_lock:
-                pts = (self.cur_rollout[:, :2] - self.cur_rollout_ip[:2]) + self.inferred_pose()[:2]
+                pts = (
+                    self.cur_rollout[:, :2] - self.cur_rollout_ip[:2]
+                ) + self.inferred_pose()[:2]
 
-            m.points = map(lambda (x, y): Point(x=x, y=y), pts)
+            m.points = map(lambda xy: Point(x=xy[0], y=xy[1]), pts)
 
             r, g, b = 0x36, 0xCD, 0xC4
-            m.colors = [ColorRGBA(r=r / 255.0, g=g / 255.0, b=b / 255.0, a=0.7)] * len(m.points)
+            m.colors = [ColorRGBA(r=r / 255.0, g=g / 255.0, b=b / 255.0, a=0.7)] * len(
+                m.points
+            )
             m.scale.x = 0.05
             self.traj_chosen_pub.publish(m)
 

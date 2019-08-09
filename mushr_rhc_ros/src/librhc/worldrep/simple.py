@@ -1,9 +1,9 @@
 import numpy as np
+import torch
 from scipy import ndimage
 
 import librhc.utils as utils
 import rhctensor
-import torch
 
 
 class Simple:

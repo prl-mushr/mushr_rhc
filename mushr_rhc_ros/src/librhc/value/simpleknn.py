@@ -3,11 +3,11 @@ from threading import Event
 
 import networkx as nx
 import numpy as np
+import torch
 from scipy.interpolate import interp1d
 from sklearn.neighbors import NearestNeighbors
 
 import librhc.utils as utils
-import torch
 
 
 def next_prime():

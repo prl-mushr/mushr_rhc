@@ -1,10 +1,10 @@
 import os
 
 import numpy as np
+import torch
 
 import cache
 import rhctensor
-import torch
 
 
 def world2map(mapdata, poses, out=None):
