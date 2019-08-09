@@ -1,2 +1,0 @@
-debug:
-    ip_topic: '/sim_car_pose/pose'

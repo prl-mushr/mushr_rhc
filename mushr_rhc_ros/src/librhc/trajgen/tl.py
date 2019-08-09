@@ -30,23 +30,23 @@ class TL:
             self.ctrls[:, t, 1] = deltas
 
     def get_control_trajectories(self, velocity):
-        '''
+        """
         Returns:
         [(K, T, NCTRL) tensor] -- of controls
             ([:, :, 0] is the desired speed, [:, :, 1] is the control delta)
-        '''
+        """
         self.ctrls[:, :, 0] = velocity
         return self.ctrls
 
     def generate_control(self, controls, costs):
-        '''
+        """
         Args:
         controls [(K, T, NCTRL) tensor] -- Returned by get_control_trajectories
         costs [(K, 1) tensor] -- Cost to take a path
 
         Returns:
         [(T, NCTRL) tensor] -- The lowest cost trajectory to take
-        '''
+        """
         assert controls.size() == (self.K, self.T, 2)
         assert costs.size() == (self.K,)
         _, idx = torch.min(costs, 0)

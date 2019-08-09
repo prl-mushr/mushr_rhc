@@ -5,7 +5,6 @@
 
     <node pkg="mushr_rhc_ros" type="rhcdebug.py" name="viz_paths" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
-        <param name="cache_dir" value="~/mushr_rhc_cache/" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/all_params.yaml" />

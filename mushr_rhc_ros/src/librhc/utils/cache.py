@@ -2,7 +2,7 @@ import os
 
 
 def get_root_cache_dir(params):
-    path = params.get_str('cache', default='~/.cache/mushr_rhc')
+    path = params.get_str("cache", default="~/.cache/mushr_rhc/")
     path = os.path.expanduser(path)
 
     if not os.path.isdir(path):

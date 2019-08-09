@@ -1,7 +1,10 @@
 traj_chosen_topic: '/rhcontroller/traj_chosen'
 
+trajgen:
+  trajgen_name: tl
+
 debug:
-    ip_topic: '/sim_car_pose/pose'
+    ip_topic: '/pf/inferred_pose'
     flag:
         viz_rollouts: true
         current_path: true

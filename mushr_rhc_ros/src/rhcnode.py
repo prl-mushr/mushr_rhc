@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-import os
-import rospy
-import threading
 import cProfile
+import os
 import signal
+import threading
 
+import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Point, PoseStamped
 from visualization_msgs.msg import Marker
@@ -14,9 +14,9 @@ from std_srvs.srv import Empty as SrvEmpty
 
 import logger
 import parameters
-import utils
-import rhctensor
 import rhcbase
+import rhctensor
+import utils
 
 
 class RHCNode(rhcbase.RHCBase):
@@ -49,7 +49,7 @@ class RHCNode(rhcbase.RHCBase):
     def end_profile(self):
         if self.do_profile:
             self.pr.disable()
-            self.pr.dump_stats(os.path.expanduser('~/mushr_rhc_stats.prof'))
+            self.pr.dump_stats(os.path.expanduser("~/mushr_rhc_stats.prof"))
 
     def start(self):
         self.logger.info("Starting RHController")
@@ -105,36 +105,37 @@ class RHCNode(rhcbase.RHCBase):
         rospy.Service("~reset/soft", SrvEmpty, self.srv_reset_soft)
         rospy.Service("~reset/hard", SrvEmpty, self.srv_reset_hard)
 
-        rospy.Subscriber("/move_base_simple/goal",
-                         PoseStamped, self.cb_goal, queue_size=1)
+        rospy.Subscriber(
+            "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
+        )
 
-        if self.params.get_bool("use_sim_pose", default=False):
-            rospy.Subscriber("/car_pose",
-                             PoseStamped, self.cb_pose, queue_size=10)
-
-        if self.params.get_bool("use_odom_pose", default=True):
-            rospy.Subscriber("/pf/inferred_pose",
-                             PoseStamped, self.cb_pose, queue_size=10)
+        rospy.Subscriber(
+            rospy.get_param("~inferred_pose_t"),
+            PoseStamped,
+            self.cb_pose,
+            queue_size=10,
+        )
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
-                "ctrl_topic",
-                default="/mux/ackermann_cmd_mux/input/navigation"
+                "ctrl_topic", default="/mux/ackermann_cmd_mux/input/navigation"
             ),
-            AckermannDriveStamped, queue_size=2
+            AckermannDriveStamped,
+            queue_size=2,
         )
 
         traj_chosen_t = self.params.get_str("traj_chosen_topic", default='~traj_chosen')
         self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
-        self.expr_at_goal = rospy.Publisher("/experiments/finished",
-                                            Empty, queue_size=1)
+        self.expr_at_goal = rospy.Publisher(
+            "/experiments/finished", Empty, queue_size=1
+        )
 
     def srv_reset_hard(self, msg):
-        '''
+        """
         Hard reset does a complete reload of the controller
-        '''
+        """
         rospy.loginfo("Start hard reset")
         self.reset_lock.acquire()
         self.load_controller()
@@ -144,10 +145,10 @@ class RHCNode(rhcbase.RHCBase):
         return []
 
     def srv_reset_soft(self, msg):
-        '''
+        """
         Soft reset only resets soft state (like tensors). No dependencies or maps
         are reloaded
-        '''
+        """
         rospy.loginfo("Start soft reset")
         self.reset_lock.acquire()
         self.rhctrl.reset()
@@ -155,9 +156,6 @@ class RHCNode(rhcbase.RHCBase):
         self.reset_lock.release()
         rospy.loginfo("End soft reset")
         return []
-
-    def cb_odom(self, msg):
-        self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose.pose)))
 
     def cb_goal(self, msg):
         goal = self.dtype(utils.rospose_to_posetup(msg.pose))
@@ -183,8 +181,6 @@ class RHCNode(rhcbase.RHCBase):
             m.points = map(lambda (x, y): Point(x=x, y=y), pts)
 
             r, g, b = 0x36, 0xCD, 0xC4
-            # purple: r, g, b = 0x5c, 0x26, 0x86
-            # tan: r, g, b = 0xF4, 0xD6, 0x76
             m.colors = [ColorRGBA(r=r / 255.0, g=g / 255.0, b=b / 255.0, a=0.7)] * len(m.points)
             m.scale.x = 0.05
             self.traj_chosen_pub.publish(m)
@@ -209,7 +205,7 @@ class RHCNode(rhcbase.RHCBase):
             return self._inferred_pose
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     params = parameters.RosParams()
     logger = logger.RosLog()
     node = RHCNode(rhctensor.float_tensor(), params, logger, "rhcontroller")
