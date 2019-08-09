@@ -1,6 +1,7 @@
 T: 21
-K: 121
+K: 201
 trajgen_name: 'tl'
+
 horizon:
     distance: 4.0
     time: -1.5

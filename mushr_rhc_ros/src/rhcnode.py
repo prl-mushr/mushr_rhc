@@ -7,9 +7,10 @@ import threading
 
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import Point, Pose, PoseArray, PoseStamped
-from std_msgs.msg import Empty
+from geometry_msgs.msg import Point, PoseStamped
+from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
+from visualization_msgs.msg import Marker
 
 import logger
 import parameters
@@ -27,6 +28,9 @@ class RHCNode(rhcbase.RHCBase):
         self.reset_lock = threading.Lock()
         self.inferred_pose_lock = threading.Lock()
         self._inferred_pose = None
+
+        self.cur_rollout = self.cur_rollout_ip = None
+        self.traj_pub_lock = threading.Lock()
 
         self.goal_event = threading.Event()
         self.map_metadata_event = threading.Event()
@@ -60,7 +64,12 @@ class RHCNode(rhcbase.RHCBase):
         self.logger.info("Initialized")
 
         while not rospy.is_shutdown() and self.run:
-            next_traj, rollout = self.run_loop(self.inferred_pose())
+            ip = self.inferred_pose()
+            next_traj, rollout = self.run_loop(ip)
+            with self.traj_pub_lock:
+                if rollout is not None:
+                    self.cur_rollout = rollout.clone()
+                    self.cur_rollout_ip = ip
 
             if next_traj is not None:
                 self.publish_traj(next_traj, rollout)
@@ -116,7 +125,7 @@ class RHCNode(rhcbase.RHCBase):
         )
 
         traj_chosen_t = self.params.get_str("traj_chosen_topic", default="~traj_chosen")
-        self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, PoseArray, queue_size=10)
+        self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher(
@@ -161,6 +170,25 @@ class RHCNode(rhcbase.RHCBase):
     def cb_pose(self, msg):
         self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
 
+        if self.cur_rollout is not None and self.cur_rollout_ip is not None:
+            m = Marker()
+            m.header.frame_id = "map"
+            m.type = m.LINE_STRIP
+            m.action = m.ADD
+            with self.traj_pub_lock:
+                pts = (
+                    self.cur_rollout[:, :2] - self.cur_rollout_ip[:2]
+                ) + self.inferred_pose()[:2]
+
+            m.points = map(lambda xy: Point(x=xy[0], y=xy[1]), pts)
+
+            r, g, b = 0x36, 0xCD, 0xC4
+            m.colors = [ColorRGBA(r=r / 255.0, g=g / 255.0, b=b / 255.0, a=0.7)] * len(
+                m.points
+            )
+            m.scale.x = 0.05
+            self.traj_chosen_pub.publish(m)
+
     def publish_traj(self, traj, rollout):
         assert traj.size() == (self.T, 2)
         assert rollout.size() == (self.T, 3)
@@ -171,12 +199,6 @@ class RHCNode(rhcbase.RHCBase):
         ctrlmsg.drive.speed = ctrl[0]
         ctrlmsg.drive.steering_angle = ctrl[1]
         self.rp_ctrls.publish(ctrlmsg)
-
-        rolloutmsg = PoseArray()
-        rolloutmsg.header.stamp = rospy.Time.now()
-        rolloutmsg.header.frame_id = "map"
-        rolloutmsg.poses = map(lambda x: Pose(position=Point(x=x[0], y=x[1])), rollout)
-        self.traj_chosen_pub.publish(rolloutmsg)
 
     def set_inferred_pose(self, ip):
         with self.inferred_pose_lock:

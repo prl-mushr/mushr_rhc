@@ -33,8 +33,8 @@ class Simple:
         self.perm = rhctensor.byte_tensor()(self.K * self.T)
 
         # Ratio of car to extend in every direction
-        self.car_length = self.params.get_float("world_rep/car_length", default=0.55)
-        self.car_width = self.params.get_float("world_rep/car_width", default=0.30)
+        self.car_length = self.params.get_float("world_rep/car_length", default=0.5)
+        self.car_width = self.params.get_float("world_rep/car_width", default=0.3)
 
         self.dist_field = ndimage.distance_transform_edt(
             np.logical_not(self.perm_reg.cpu().numpy())
