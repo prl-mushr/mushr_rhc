@@ -1,9 +1,12 @@
+# Copyright (c) 2019, The Personal Robotics Lab, The MuSHR Team, The Contributors of MuSHR
+# License: BSD 3-Clause. See LICENSE.md file in root directory.
+
 import numpy as np
+import torch
 from scipy import ndimage
 
 import librhc.utils as utils
 import rhctensor
-import torch
 
 
 class Simple:
