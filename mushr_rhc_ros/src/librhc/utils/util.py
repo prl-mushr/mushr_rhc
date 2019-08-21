@@ -1,3 +1,7 @@
+# Copyright (c) 2019, The Personal Robotics Lab, The MuSHR Team, The Contributors of MuSHR
+# License: BSD 3-Clause. See LICENSE.md file in root directory.
+
+
 def get_time_horizon(params):
     time_horizon = params.get_float("horizon/time", default=-1.0)
     if time_horizon > 0.0:
