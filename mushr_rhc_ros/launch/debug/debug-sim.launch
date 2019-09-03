@@ -1,12 +1,12 @@
 <launch>
     <arg name="tg" default="dispersion" />
 
-    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
+    <include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
 
     <node pkg="mushr_rhc_ros" type="rhcdebug.py" name="rhcdebug" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-		<param name="inferred_pose_t" value="/car_pose" />
+		<param name="inferred_pose_t" value="car_pose" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />

@@ -121,7 +121,7 @@ class RHCNode(rhcbase.RHCBase):
 
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
-                "ctrl_topic", default="/mux/ackermann_cmd_mux/input/navigation"
+                "ctrl_topic", default="mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped,
             queue_size=2,
@@ -132,7 +132,7 @@ class RHCNode(rhcbase.RHCBase):
 
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher(
-            "/experiments/finished", Empty, queue_size=1
+            "experiments/finished", Empty, queue_size=1
         )
 
     def srv_reset_hard(self, msg):

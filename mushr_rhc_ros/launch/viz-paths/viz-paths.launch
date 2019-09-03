@@ -1,7 +1,7 @@
 <launch>
     <arg name="tg" default="dispersion" />
 
-    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
+    <include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
 
     <node pkg="mushr_rhc_ros" type="rhcdebug.py" name="viz_paths" output="screen">
         <env name="RHC_USE_CUDA" value="0" />

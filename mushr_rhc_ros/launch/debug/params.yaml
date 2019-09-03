@@ -1,4 +1,4 @@
-traj_chosen_topic: '/rhcontroller/traj_chosen'
+traj_chosen_topic: '~traj_chosen'
 
 trajgen:
   trajgen_name: tl

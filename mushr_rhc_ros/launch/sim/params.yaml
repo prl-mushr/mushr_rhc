@@ -1,3 +1,3 @@
-traj_chosen_topic: '/rhcontroller/traj_chosen'
+traj_chosen_topic: '~traj_chosen'
 
 profile: false
