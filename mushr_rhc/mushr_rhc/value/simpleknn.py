@@ -10,7 +10,7 @@ import torch
 from scipy.interpolate import interp1d
 from sklearn.neighbors import NearestNeighbors
 
-import librhc.utils as utils
+import mushr_rhc
 
 
 def next_prime():
@@ -48,20 +48,23 @@ def halton_sequence(size, dim):
 
 
 class SimpleKNN:
-    def __init__(self, params, logger, dtype, map):
+    def __init__(self, params, logger, dtype, map, point_viz_fn=None):
         self.params = params
         self.logger = logger
         self.map = map
         self.dtype = dtype
         self.nbrs = None
+        # pass in a function to visualize the function
+        self.point_viz_fn = point_viz_fn
+
         self.goal_i = None
         self.goal_event = Event()
 
-        self.perm_region = utils.map.load_permissible_region(self.params, map)
+        self.perm_region = mushr_rhc.utils.map.load_permissible_region(self.params, map)
         h, w = self.perm_region.shape
 
         nhalton = self.params.get_int("value/simpleknn/nhalton", default=3000)
-        map_cache = utils.cache.get_cache_map_dir(self.params, self.map)
+        map_cache = mushr_rhc.utils.cache.get_cache_map_dir(self.params, self.map)
         halton_pts_file = os.path.join(map_cache, "halton-{}.npy".format(nhalton))
         if os.path.isfile(halton_pts_file):
             self.points = np.load(halton_pts_file)
@@ -110,7 +113,7 @@ class SimpleKNN:
         # Convert "world" goal to "map" coordinates
         goal = goal.unsqueeze(0)
         map_goal = self.dtype(goal.size())
-        utils.map.world2map(self.map, goal, out=map_goal)
+        mushr_rhc.utils.map.world2map(self.map, goal, out=map_goal)
 
         # Add goal to points on the map so we can create a single source shortest path from it
         map_goal = np.array([[map_goal[0, 1], map_goal[0, 0]]])
@@ -146,54 +149,18 @@ class SimpleKNN:
         self.reachable_nodes = length_to_goal.keys()
         self.reachable_dst = length_to_goal.values()
 
-        self._viz_halton()
+        if self.point_viz_fn:
+            hp = np.zeros((len(self.reachable_pts), 3))
+            hp[:, 0] = self.reachable_pts[:, 1]
+            hp[:, 1] = self.reachable_pts[:, 0]
+            mushr_rhc.utils.map.map2worldnp_inplace(self.map, hp)
+            self.point_viz_fn(hp, self.reachable_dst)
 
         self.nbrs = NearestNeighbors(n_neighbors=k, algorithm="ball_tree").fit(
             self.reachable_pts
         )
         self.goal_event.set()
         return True
-
-    def _viz_halton(self):
-        import rospy
-        from visualization_msgs.msg import Marker
-        from geometry_msgs.msg import Point
-        from std_msgs.msg import ColorRGBA
-
-        hp = np.zeros((len(self.reachable_pts), 3))
-        hp[:, 0] = self.reachable_pts[:, 1]
-        hp[:, 1] = self.reachable_pts[:, 0]
-        utils.map.map2worldnp(self.map, hp)
-
-        m = Marker()
-        m.header.frame_id = "map"
-        m.header.stamp = rospy.Time.now()
-        m.ns = "hp"
-        m.id = 0
-        m.type = m.POINTS
-        m.action = m.ADD
-        m.pose.position.x = 0
-        m.pose.position.y = 0
-        m.pose.position.z = 0
-        m.pose.orientation.x = 0.0
-        m.pose.orientation.y = 0.0
-        m.pose.orientation.z = 0.0
-        m.pose.orientation.w = 1.0
-        m.scale.x = 0.1
-        m.scale.y = 0.1
-        m.scale.z = 0.1
-        max_d = np.max(self.reachable_dst)
-        for i, pts in enumerate(hp):
-            p = Point()
-            c = ColorRGBA()
-            c.a = 1
-            c.g = int(255.0 * self.reachable_dst[i] / max_d)
-            p.x, p.y = pts[0], pts[1]
-            m.points.append(p)
-            m.colors.append(c)
-
-        pub = rospy.Publisher("~markers", Marker, queue_size=100)
-        pub.publish(m)
 
     def _eval_edge(self, src, dst):
         # moves along line between src and dst and samples points
@@ -227,7 +194,7 @@ class SimpleKNN:
             return torch.zeros(len(input_poses)).type(self.dtype)
 
         input_points = input_poses.clone().cpu().numpy()
-        utils.map.world2mapnp(self.map, input_points)
+        mushr_rhc.utils.map.world2mapnp_inplace(self.map, input_points)
 
         input_points_corrected = input_points.copy()
         input_points_corrected[:, 0] = input_points[:, 1]

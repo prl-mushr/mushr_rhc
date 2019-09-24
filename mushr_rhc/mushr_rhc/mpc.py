@@ -3,7 +3,7 @@
 
 import threading
 
-import librhc.utils as utils
+import mushr_rhc.utils as utils
 
 
 class MPC:

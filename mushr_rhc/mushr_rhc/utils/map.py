@@ -6,15 +6,10 @@ import os
 import numpy as np
 import torch
 
-import cache
-import rhctensor
+from . import cache
 
 
-def world2map(mapdata, poses, out=None):
-    if out is None:
-        print("out cannot be None")
-        exit(1)
-
+def world2map(mapdata, poses, out):
     assert poses.size() == out.size()
 
     out[:, :] = poses
@@ -35,7 +30,7 @@ def world2map(mapdata, poses, out=None):
     out[:, 1] = xs_p * mapdata.angle_sin + ys * mapdata.angle_cos
 
 
-def world2mapnp(mapdata, poses):
+def world2mapnp_inplace(mapdata, poses):
     # translation
     poses[:, 0] -= mapdata.origin_x
     poses[:, 1] -= mapdata.origin_y
@@ -50,7 +45,7 @@ def world2mapnp(mapdata, poses):
     poses[:, 2] += mapdata.angle
 
 
-def map2worldnp(mapdata, poses):
+def map2worldnp_inplace(mapdata, poses):
     # rotation
     # we need to store the x coordinates since they will be overwritten
     temp = np.copy(poses[:, 0])
@@ -88,4 +83,4 @@ def load_permissible_region(params, map):
 
         np.save(perm_reg_file, pr)
 
-    return torch.from_numpy(pr.astype(np.int)).type(rhctensor.byte_tensor())
+    return torch.from_numpy(pr.astype(np.int)).byte()

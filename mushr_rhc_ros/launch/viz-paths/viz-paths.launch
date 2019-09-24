@@ -1,13 +1,13 @@
 <launch>
     <arg name="tg" default="dispersion" />
 
-    <include file="$(find mushr_rhc)/launch/mapserver.launch" />
+    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
 
-    <node pkg="mushr_rhc" type="rhcdebug.py" name="viz_paths" output="screen">
+    <node pkg="mushr_rhc_ros" type="rhcdebug.py" name="viz_paths" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <rosparam file="$(find mushr_rhc)/launch/params/trajgen/$(arg tg).yaml" />
-        <rosparam file="$(find mushr_rhc)/launch/all_params.yaml" />
-        <rosparam file="$(find mushr_rhc)/launch/viz-paths/params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/all_params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/viz-paths/params.yaml" />
     </node>
 </launch>

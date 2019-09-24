@@ -1,7 +1,7 @@
 # Copyright (c) 2019, The Personal Robotics Lab, The MuSHR Team, The Contributors of MuSHR
 # License: BSD 3-Clause. See LICENSE.md file in root directory.
 
-import librhc.utils as utils
+import mushr_rhc
 
 
 class Kinematics:
@@ -29,7 +29,7 @@ class Kinematics:
         self.K = k
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.29)
 
-        time_horizon = utils.get_time_horizon(self.params)
+        time_horizon = mushr_rhc.utils.get_time_horizon(self.params)
         T = self.params.get_int("T", default=15)
         self.dt = time_horizon / T
 

@@ -7,7 +7,7 @@ from itertools import product
 import torch
 from scipy.spatial.distance import directed_hausdorff
 
-import librhc.utils as utils
+import mushr_rhc
 
 
 class Dispersion:
@@ -51,9 +51,7 @@ class Dispersion:
         assert deltas.size() == (samples,)
         assert self.T % branching_factor == 0
 
-        # TODO: Have a cache system for these trajectories that would get
-        # loaded here instead of doing needless computation
-        dispersion_dir = utils.cache.get_cache_dir(
+        dispersion_dir = mushr_rhc.utils.cache.get_cache_dir(
             self.params, os.path.join("trajgen", "dispersion")
         )
         dispersion_name = "-".join(

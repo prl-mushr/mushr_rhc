@@ -5,8 +5,7 @@ import numpy as np
 import torch
 from scipy import ndimage
 
-import librhc.utils as utils
-import rhctensor
+import mushr_rhc
 
 
 class Simple:
@@ -22,7 +21,7 @@ class Simple:
         self.logger = logger
         self.dtype = dtype
         self.map = map
-        self.perm_reg = utils.map.load_permissible_region(self.params, self.map)
+        self.perm_reg = mushr_rhc.utils.load_permissible_region(self.params, self.map)
 
         self.reset()
 
@@ -33,15 +32,13 @@ class Simple:
 
         self.scaled = self.dtype(self.K * self.T, 3)
         self.bbox_map = self.dtype(self.K * self.T, 2, 4)
-        self.perm = rhctensor.byte_tensor()(self.K * self.T)
+        self.perm = torch.ByteTensor(self.K * self.T)
 
         # Ratio of car to extend in every direction
         self.car_length = self.params.get_float("world_rep/car_length", default=0.5)
         self.car_width = self.params.get_float("world_rep/car_width", default=0.3)
 
-        self.dist_field = ndimage.distance_transform_edt(
-            np.logical_not(self.perm_reg.cpu().numpy())
-        )
+        self.dist_field = ndimage.distance_transform_edt(np.logical_not(self.perm_reg))
 
         self.dist_field *= self.map.resolution
         self.dist_field[self.dist_field <= self.epsilon] = (1 / (2 * self.epsilon)) * (
@@ -59,7 +56,7 @@ class Simple:
         """
         assert poses.size() == (self.K * self.T, 3)
 
-        utils.map.world2map(self.map, poses, out=self.scaled)
+        mushr_rhc.utils.map.world2map(self.map, poses, out=self.scaled)
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()
@@ -76,7 +73,7 @@ class Simple:
     def check_collision_in_map(self, poses):
         assert poses.size() == (self.K * self.T, 3)
 
-        utils.map.world2map(self.map, poses, out=self.scaled)
+        mushr_rhc.utils.map.world2map(self.map, poses, out=self.scaled)
 
         L = self.car_length
         W = self.car_width
@@ -124,7 +121,7 @@ class Simple:
             (K * T, tensor) with distances in terms of map frame
         """
 
-        utils.map.world2map(self.map, poses, out=self.scaled)
+        mushr_rhc.utils.map.world2map(self.map, poses, out=self.scaled)
 
         xs = self.scaled[:, 0].long()
         ys = self.scaled[:, 1].long()

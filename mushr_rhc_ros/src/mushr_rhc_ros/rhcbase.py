@@ -3,28 +3,65 @@
 
 import os
 
+import numpy as np
 import rospy
+from geometry_msgs.msg import Point
 from nav_msgs.msg import MapMetaData
 from nav_msgs.srv import GetMap
+from std_msgs.msg import ColorRGBA
+from visualization_msgs.msg import Marker
 
-import librhc
-import librhc.cost as cost
-import librhc.model as model
-import librhc.trajgen as trajgen
-import librhc.types as types
-import librhc.value as value
-import librhc.worldrep as worldrep
+import mushr_rhc
+import mushr_rhc.cost
+import mushr_rhc.model
+import mushr_rhc.trajgen
+import mushr_rhc.types
+import mushr_rhc.value
+import mushr_rhc.worldrep
+import rosvizpath
 import utils
 
-motion_models = {"kinematic": model.Kinematics}
+motion_models = {"kinematic": mushr_rhc.model.Kinematics}
 
-trajgens = {"tl": trajgen.TL, "dispersion": trajgen.Dispersion}
+trajgens = {"tl": mushr_rhc.trajgen.TL, "dispersion": mushr_rhc.trajgen.Dispersion}
 
-cost_functions = {"waypoints": cost.Waypoints}
+cost_functions = {"waypoints": mushr_rhc.cost.Waypoints}
 
-value_functions = {"simpleknn": value.SimpleKNN}
+value_functions = {"simpleknn": mushr_rhc.value.SimpleKNN}
 
-world_reps = {"simple": worldrep.Simple}
+world_reps = {"simple": mushr_rhc.worldrep.Simple}
+
+
+def viz_halton(hp, dsts):
+    m = Marker()
+    m.header.frame_id = "map"
+    m.header.stamp = rospy.Time.now()
+    m.ns = "hp"
+    m.id = 0
+    m.type = m.POINTS
+    m.action = m.ADD
+    m.pose.position.x = 0
+    m.pose.position.y = 0
+    m.pose.position.z = 0
+    m.pose.orientation.x = 0.0
+    m.pose.orientation.y = 0.0
+    m.pose.orientation.z = 0.0
+    m.pose.orientation.w = 1.0
+    m.scale.x = 0.1
+    m.scale.y = 0.1
+    m.scale.z = 0.1
+    max_d = np.max(dsts)
+    for i, pts in enumerate(hp):
+        p = Point()
+        c = ColorRGBA()
+        c.a = 1
+        c.g = int(255.0 * dsts[i] / max_d)
+        p.x, p.y = pts[0], pts[1]
+        m.points.append(p)
+        m.colors.append(c)
+
+    pub = rospy.Publisher("~markers", Marker, queue_size=1)
+    pub.publish(m)
 
 
 class RHCBase(object):
@@ -43,7 +80,7 @@ class RHCBase(object):
         tg = self.get_trajgen(m)
         cf = self.get_cost_fn()
 
-        return librhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
+        return mushr_rhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
 
     def get_model(self):
         mname = self.params.get_str("model_name", default="kinematic")
@@ -80,11 +117,15 @@ class RHCBase(object):
             self.logger.fatal("value_fn '{}' is not valid".format(vfname))
 
         vf = value_functions[vfname](
-            self.params, self.logger, self.dtype, self.map_data
+            self.params, self.logger, self.dtype, self.map_data, viz_halton
         )
 
+        viz_rollouts_fn = None
+        if bool(rospy.get_param("debug/flag/viz_rollouts", False)):
+            viz_rollouts_fn = rosvizpath.VizPaths().viz_rollouts
+
         return cost_functions[cfname](
-            self.params, self.logger, self.dtype, self.map_data, wr, vf
+            self.params, self.logger, self.dtype, self.map_data, wr, vf, viz_rollouts_fn
         )
 
     def cb_map_metadata(self, msg):
@@ -101,7 +142,7 @@ class RHCBase(object):
             )
 
         x, y, angle = utils.rospose_to_posetup(msg.origin)
-        self.map_data = types.MapData(
+        self.map_data = mushr_rhc.types.MapData(
             name=name,
             resolution=msg.resolution,
             origin_x=x,

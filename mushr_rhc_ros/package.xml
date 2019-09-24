@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>mushr_rhc</name>
+  <name>mushr_rhc_ros</name>
   <version>0.0.0</version>
   <description>Receding Horizon Controller base package</description>
 

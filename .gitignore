@@ -10,3 +10,5 @@ __pycache__/
 *.swo
 
 *.bag
+
+*.egg-info/

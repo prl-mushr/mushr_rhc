@@ -7,7 +7,9 @@ import torch
 class Waypoints:
     NPOS = 3  # x, y, theta
 
-    def __init__(self, params, logger, dtype, map, world_rep, value_fn):
+    def __init__(
+        self, params, logger, dtype, map, world_rep, value_fn, viz_rollouts_fn
+    ):
         self.params = params
         self.logger = logger
         self.dtype = dtype
@@ -16,9 +18,7 @@ class Waypoints:
         self.world_rep = world_rep
         self.value_fn = value_fn
 
-        self.viz_rollouts = self.params.get_bool("debug/flag/viz_rollouts", False)
-        self.n_viz = self.params.get_int("debug/viz_rollouts/n", -1)
-        self.print_stats = self.params.get_bool("debug/viz_rollouts/print_stats", False)
+        self.viz_rollouts_fn = viz_rollouts_fn
 
         self.reset()
 
@@ -84,55 +84,9 @@ class Waypoints:
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000
 
-        if self.viz_rollouts:
-            import librhc.rosviz as rosviz
-
-            non_colliding = (collision_cost == 0).nonzero()
-
-            if non_colliding.size()[0] > 0:
-
-                def print_n(c, poses, ns, cmap="coolwarm"):
-                    _, all_idx = torch.sort(c)
-
-                    n = min(self.n_viz, len(c))
-                    idx = all_idx[:n] if n > -1 else all_idx
-                    rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
-
-                p_non_colliding = poses[non_colliding].squeeze()
-                print_n(
-                    result[non_colliding].squeeze(), p_non_colliding, ns="final_result"
-                )
-                print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
-                print_n(
-                    collision_cost[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="collision_cost",
-                )
-                print_n(
-                    obs_dist_cost[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="obstacle_dist_cost",
-                )
-                print_n(
-                    smoothness[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="smoothness",
-                )
-
-                if self.print_stats:
-                    _, all_sorted_idx = torch.sort(result[non_colliding].squeeze())
-                    n = min(self.n_viz, len(all_sorted_idx))
-                    idx = all_sorted_idx[:n] if n > -1 else all_sorted_idx
-
-                    print("Final Result")
-                    print(result[idx])
-                    print("Cost 2 Go")
-                    print(cost2go[idx])
-                    print("Collision Cost")
-                    print(collision_cost[idx])
-                    print("Obstacle Distance Cost")
-                    print(obs_dist_cost[idx])
-                    print("Smoothness")
-                    print(smoothness[idx])
+        if self.viz_rollouts_fn:
+            self.viz_rollouts_fn(
+                result, cost2go, collision_cost, obs_dist_cost, smoothness
+            )
 
         return result
