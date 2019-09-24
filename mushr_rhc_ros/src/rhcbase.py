@@ -15,7 +15,6 @@ import mushr_rhc
 import mushr_rhc.cost
 import mushr_rhc.model
 import mushr_rhc.trajgen
-import mushr_rhc.types
 import mushr_rhc.value
 import mushr_rhc.worldrep
 import rosvizpath

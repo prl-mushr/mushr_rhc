@@ -10,8 +10,12 @@ project(mushr_rhc_ros)
 find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
+  std_srvs
+  ackermann_msgs
   geometry_msgs
   visualization_msgs
+  nav_msgs
+  tf
   message_generation
 )
 
