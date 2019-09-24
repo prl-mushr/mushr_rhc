@@ -142,7 +142,7 @@ class RHCBase(object):
             )
 
         x, y, angle = utils.rospose_to_posetup(msg.origin)
-        self.map_data = mushr_rhc.types.MapData(
+        self.map_data = mushr_rhc.MapInfo(
             name=name,
             resolution=msg.resolution,
             origin_x=x,

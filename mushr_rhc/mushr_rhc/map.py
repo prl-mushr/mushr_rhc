@@ -4,7 +4,7 @@
 import numpy as np
 
 
-class MapData:
+class MapInfo:
     def __init__(
         self,
         name,
@@ -26,6 +26,7 @@ class MapData:
         self._data = None
         self._get_map_data = get_map_data
 
+    @property
     def data(self):
         if not self._data:
             self._data = np.array(self._get_map_data())

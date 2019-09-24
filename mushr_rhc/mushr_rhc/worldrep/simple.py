@@ -15,7 +15,7 @@ class Simple:
                 params (obj): parameter getter
                 logger (obj): a logger to write to
                 dtype (obj): data type for tensors
-                map (types.MapData): A map representation
+                map (MapInfo): A map representation
         """
         self.params = params
         self.logger = logger
