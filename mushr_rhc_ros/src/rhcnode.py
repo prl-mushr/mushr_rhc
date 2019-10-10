@@ -131,9 +131,7 @@ class RHCNode(rhcbase.RHCBase):
         self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
-        self.expr_at_goal = rospy.Publisher(
-            "experiments/finished", Empty, queue_size=1
-        )
+        self.expr_at_goal = rospy.Publisher("experiments/finished", Empty, queue_size=1)
 
     def srv_reset_hard(self, msg):
         """
