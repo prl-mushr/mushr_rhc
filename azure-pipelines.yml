@@ -34,7 +34,6 @@ jobs:
 
   - bash: |
       source /opt/ros/melodic/setup.bash
-      sudo apt-get update && sudo apt-get install --no-install-recommends -y python-tk
 
       sudo chown -R $(whoami) /catkin_ws
 
