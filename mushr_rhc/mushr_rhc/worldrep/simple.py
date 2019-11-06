@@ -47,7 +47,7 @@ class Simple:
         self.dist_field[self.dist_field > self.epsilon] = 0
         self.dist_field = torch.from_numpy(self.dist_field).type(self.dtype)
 
-    def collisions(self, poses):
+    def collisions(self, poses, padding):
         """
         Arguments:
             poses (K * T, 3 tensor)
@@ -63,20 +63,23 @@ class Simple:
 
         self.perm.zero_()
         self.perm |= self.perm_reg[ys, xs]
-        self.perm |= self.perm_reg[ys + self.car_padding, xs]
-        self.perm |= self.perm_reg[ys - self.car_padding, xs]
-        self.perm |= self.perm_reg[ys, xs + self.car_padding]
-        self.perm |= self.perm_reg[ys, xs - self.car_padding]
+        self.perm |= self.perm_reg[ys + padding, xs]
+        self.perm |= self.perm_reg[ys - padding, xs]
+        self.perm |= self.perm_reg[ys, xs + padding]
+        self.perm |= self.perm_reg[ys, xs - padding]
 
         return self.perm.type(self.dtype)
 
-    def check_collision_in_map(self, poses):
+    def check_collision_in_map(self, poses, padding=None):
+        # padding should be a two-tuple of (length and width)
+        if padding is None:
+            padding = (self.car_length, self.car_width)
+        assert len(padding) == 2
         assert poses.size() == (self.K * self.T, 3)
 
         mushr_rhc.utils.map.world2map(self.map, poses, out=self.scaled)
 
-        L = self.car_length
-        W = self.car_width
+        L, W = padding
 
         # Specify specs of bounding box
         bbox = self.dtype(

@@ -16,18 +16,21 @@ class VizPaths:
             MarkerArray,
             queue_size=100,
         )
-        self.n_viz = int(rospy.get_param("debug/viz_rollouts/n", -1))
+        self.n_viz = int(rospy.get_param("~debug/viz_rollouts/n", -1))
         self.print_stats = bool(
-            rospy.get_param("debug/viz_rollouts/print_stats", False)
+            rospy.get_param("~debug/viz_rollouts/print_stats", False)
         )
+        self.K = int(rospy.get_param("~K", 62))
 
     def viz_rollouts(
-        self, cost, cost2go, collision_cost, obs_dist_cost, smoothness, poses
+        self, cost, poses, **kwargs
     ):
-        non_colliding = (collision_cost == 0).nonzero()
+        if "collision_cost" in kwargs:
+            non_colliding = (kwargs["collision_cost"] == 0).nonzero()
+        else:
+            non_colliding = torch.ones((len(poses)), dtype=torch.bool)
 
         if non_colliding.size()[0] > 0:
-
             def print_n(c, poses, ns, cmap="coolwarm"):
                 _, all_idx = torch.sort(c)
 
@@ -37,21 +40,6 @@ class VizPaths:
 
             p_non_colliding = poses[non_colliding].squeeze()
             print_n(cost[non_colliding].squeeze(), p_non_colliding, ns="final_result")
-            print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
-            print_n(
-                collision_cost[non_colliding].squeeze(),
-                p_non_colliding,
-                ns="collision_cost",
-            )
-            print_n(
-                obs_dist_cost[non_colliding].squeeze(),
-                p_non_colliding,
-                ns="obstacle_dist_cost",
-            )
-            print_n(
-                smoothness[non_colliding].squeeze(), p_non_colliding, ns="smoothness"
-            )
-
             if self.print_stats:
                 _, all_sorted_idx = torch.sort(cost[non_colliding].squeeze())
                 n = min(self.n_viz, len(all_sorted_idx))
@@ -59,14 +47,17 @@ class VizPaths:
 
                 print("Final Result")
                 print(cost[idx])
-                print("Cost 2 Go")
-                print(cost2go[idx])
-                print("Collision Cost")
-                print(collision_cost[idx])
-                print("Obstacle Distance Cost")
-                print(obs_dist_cost[idx])
-                print("Smoothness")
-                print(smoothness[idx])
+            for k, v in kwargs.items():
+                assert v.size() == (self.K,), "%s %s" % (k, str(v.size()))
+                print_n(
+                    v[non_colliding].squeeze(),
+                    p_non_colliding,
+                    ns=k,
+                )
+
+                if self.print_stats:
+                    print("%s cost" % k)
+                    print(v[idx])
 
     def viz_paths_cmap(self, poses, costs, ns="paths", cmap="plasma", scale=0.03):
         max_c = torch.max(costs)

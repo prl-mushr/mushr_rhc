@@ -7,7 +7,6 @@ import mushr_rhc
 class Kinematics:
     EPSILON = 1e-5
     NCTRL = 2
-    NPOS = 3
 
     def __init__(self, params, logger, dtype):
         self.logger = logger
@@ -18,6 +17,8 @@ class Kinematics:
 
     def reset(self):
         self.set_k(self.params.get_int("K", default=62))
+        self.T = self.params.get_int("T", default=21)
+        self.NPOS = self.params.get_int("npos", default=3)
 
     def set_k(self, k):
         """
@@ -39,6 +40,16 @@ class Kinematics:
         self.deltaY = self.dtype(self.K)
         self.sin = self.dtype(self.K)
         self.cos = self.dtype(self.K)
+
+    def rollout(self, state, trajs, rollouts):
+        rollouts.zero_()
+
+        # For each K trial, the first position is at the current position
+        rollouts[:, 0] = state.expand_as(rollouts[:, 0])
+
+        for t in range(1, self.T):
+            cur_x = rollouts[:, t - 1]
+            rollouts[:, t] = self.apply(cur_x, trajs[:, t - 1])
 
     def apply(self, pose, ctrl):
         """

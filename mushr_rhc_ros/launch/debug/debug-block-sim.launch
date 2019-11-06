@@ -1,0 +1,25 @@
+<launch>
+    <arg name="tg" default="tl" />
+    <arg name="map" default="$(find mushr_rhc_ros)/maps/sandbox.yaml" />
+    <arg name="c2g_map" default="$(arg map)" />
+
+    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch">
+        <arg name="map" default="$(arg map)" />
+        <arg name="c2g_map" default="$(arg c2g_map)" />
+    </include>
+
+    <node pkg="mushr_rhc_ros" type="rhcdebug.py" name="rhcdebug" output="screen">
+        <env name="RHC_USE_CUDA" value="0" />
+
+		<param name="inferred_pose_t" value="/car_pose" />
+        <param name="npos" value="6" />
+        <param name="model_name" value="mujoco" />
+        <param name="cost_fn_name" value="block_push" />
+
+        <remap from="mujoco_rollout" to="/mushr_mujoco_ros/rollout" />
+
+        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim.yaml" />
+		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/debug/params.yaml" />
+    </node>
+</launch>

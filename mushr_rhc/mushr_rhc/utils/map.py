@@ -10,7 +10,7 @@ from . import cache
 
 
 def world2map(mapdata, poses, out):
-    assert poses.size() == out.size()
+    assert poses.size() == out.size(), "poses.size() %s, out.size() %s" % (str(poses.size()), str(out.size()))
 
     out[:, :] = poses
     scale = float(mapdata.resolution)
@@ -72,7 +72,7 @@ def load_permissible_region(params, map):
     if os.path.isfile(perm_reg_file):
         pr = np.load(perm_reg_file)
     else:
-        map_data = map.data()
+        map_data = map.data
         array_255 = map_data.reshape((map.height, map.width))
         pr = np.zeros_like(array_255, dtype=bool)
 

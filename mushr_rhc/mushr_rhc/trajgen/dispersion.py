@@ -16,11 +16,14 @@ class Dispersion:
     # Needed so the range doesn't cut out the max delta
     DELTAS_EPSILON = 0.0001
 
-    def __init__(self, params, logger, dtype, motion_model):
+    def __init__(self, params, logger, dtype):
         self.logger = logger
         self.params = params
         self.dtype = dtype
-        self.motion_model = motion_model
+
+        # For dispersion, we're only really going to want to use the Kinematic car model
+        # (we want an analytical solution).
+        self.motion_model = mushr_rhc.model.Kinematics(params, logger, dtype)
 
         self.reset()
 

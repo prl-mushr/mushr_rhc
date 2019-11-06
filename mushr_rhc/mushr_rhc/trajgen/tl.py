@@ -8,7 +8,7 @@ class TL:
     # Size of control vector
     NCTRL = 2
 
-    def __init__(self, params, logger, dtype, _model):
+    def __init__(self, params, logger, dtype):
         self.logger = logger
         self.params = params
         self.dtype = dtype

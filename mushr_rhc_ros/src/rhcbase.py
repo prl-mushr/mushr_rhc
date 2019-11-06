@@ -20,11 +20,15 @@ import mushr_rhc.worldrep
 import rosvizpath
 import utils
 
-motion_models = {"kinematic": mushr_rhc.model.Kinematics}
+motion_models = {"kinematic": mushr_rhc.model.Kinematics, "mujoco": mushr_rhc.model.MujocoSim}
 
-trajgens = {"tl": mushr_rhc.trajgen.TL, "dispersion": mushr_rhc.trajgen.Dispersion}
+trajgens = {
+    "tl": mushr_rhc.trajgen.TL,
+    "dispersion": mushr_rhc.trajgen.Dispersion,
+    "mppi": mushr_rhc.trajgen.MXPI
+}
 
-cost_functions = {"waypoints": mushr_rhc.cost.Waypoints}
+cost_functions = {"waypoints": mushr_rhc.cost.Waypoints, "block_push": mushr_rhc.cost.BlockPush}
 
 value_functions = {"simpleknn": mushr_rhc.value.SimpleKNN}
 
@@ -76,7 +80,7 @@ class RHCBase(object):
 
     def load_controller(self):
         m = self.get_model()
-        tg = self.get_trajgen(m)
+        tg = self.get_trajgen()
         cf = self.get_cost_fn()
 
         return mushr_rhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
@@ -88,12 +92,12 @@ class RHCBase(object):
 
         return motion_models[mname](self.params, self.logger, self.dtype)
 
-    def get_trajgen(self, model):
+    def get_trajgen(self):
         tgname = self.params.get_str("trajgen_name", default="tl")
         if tgname not in trajgens:
             self.logger.fatal("trajgen '{}' is not valid".format(tgname))
 
-        return trajgens[tgname](self.params, self.logger, self.dtype, model)
+        return trajgens[tgname](self.params, self.logger, self.dtype)
 
     def get_cost_fn(self):
         cfname = self.params.get_str("cost_fn_name", default="waypoints")
@@ -120,7 +124,9 @@ class RHCBase(object):
         )
 
         viz_rollouts_fn = None
-        if bool(rospy.get_param("debug/flag/viz_rollouts", False)):
+        print rospy.get_param("~debug/flag/viz_rollouts", False)
+        if bool(rospy.get_param("~debug/flag/viz_rollouts", False)):
+            print "VIS ROLLOUTS"
             viz_rollouts_fn = rosvizpath.VizPaths().viz_rollouts
 
         return cost_functions[cfname](

@@ -22,15 +22,15 @@ import rhctensor
 import utils
 
 
-class RHCNode(rhcbase.RHCBase):
+class RHCBlock(rhcbase.RHCBase):
     def __init__(self, dtype, params, logger, name):
         rospy.init_node(name, anonymous=True, disable_signals=True)
 
-        super(RHCNode, self).__init__(dtype, params, logger)
+        super(RHCBlock, self).__init__(dtype, params, logger)
 
         self.reset_lock = threading.Lock()
-        self.inferred_pose_lock = threading.Lock()
-        self._inferred_pose = None
+        self.state_lock = threading.Lock()
+        self._state = None
 
         self.cur_rollout = self.cur_rollout_ip = None
         self.traj_pub_lock = threading.Lock()
@@ -42,7 +42,7 @@ class RHCNode(rhcbase.RHCBase):
         self.run = True
 
         self.do_profile = self.params.get_bool("profile", default=False)
-        self.NPOS = self.params.get_int("npos", default=3)
+        self.NPOS = self.params.get_int("npos", default=6)
 
     def start_profile(self):
         if self.do_profile:
@@ -68,18 +68,17 @@ class RHCNode(rhcbase.RHCBase):
         self.logger.info("Initialized")
 
         while not rospy.is_shutdown() and self.run:
-            ip = self.inferred_pose()
-            next_traj, rollout = self.run_loop(ip)
+            next_traj, rollout = self.run_loop(self.state)
             with self.traj_pub_lock:
                 if rollout is not None:
                     self.cur_rollout = rollout.clone()
-                    self.cur_rollout_ip = ip
+                    self.cur_rollout_ip = self.state[:2]
 
             if next_traj is not None:
                 self.publish_traj(next_traj, rollout)
                 # For experiments. If the car is at the goal, notify the
                 # experiment tool
-                if self.rhctrl.at_goal(self.inferred_pose()):
+                if self.rhctrl.cost.at_goal(self.state):
                     self.expr_at_goal.publish(Empty())
                     self.goal_event.clear()
             rate.sleep()
@@ -117,6 +116,13 @@ class RHCNode(rhcbase.RHCBase):
             rospy.get_param("~inferred_pose_t"),
             PoseStamped,
             self.cb_pose,
+            queue_size=10,
+        )
+
+        rospy.Subscriber(
+            rospy.get_param("~block_pose_t"),
+            PoseStamped,
+            self.cb_block_pose,
             queue_size=10,
         )
 
@@ -169,6 +175,9 @@ class RHCNode(rhcbase.RHCBase):
             self.logger.info("Goal set")
         self.goal_event.set()
 
+    def cb_block_pose(self, msg):
+        self.set_block_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
+
     def cb_pose(self, msg):
         self.set_inferred_pose(self.dtype(utils.rospose_to_posetup(msg.pose)))
 
@@ -180,7 +189,7 @@ class RHCNode(rhcbase.RHCBase):
             with self.traj_pub_lock:
                 pts = (
                     self.cur_rollout[:, :2] - self.cur_rollout_ip[:2]
-                ) + self.inferred_pose()[:2]
+                ) + self.state[:2]
 
             m.points = map(lambda xy: Point(x=xy[0], y=xy[1]), pts)
 
@@ -202,18 +211,27 @@ class RHCNode(rhcbase.RHCBase):
         self.rp_ctrls.publish(ctrlmsg)
 
     def set_inferred_pose(self, ip):
-        with self.inferred_pose_lock:
-            self._inferred_pose = ip
+        with self.state_lock:
+            if self._state is None:
+                self._state = self.dtype(self.NPOS)
+            self._state[:3] = ip
 
-    def inferred_pose(self):
-        with self.inferred_pose_lock:
-            return self._inferred_pose
+    def set_block_pose(self, ip):
+        with self.state_lock:
+            if self._state is None:
+                self._state = self.dtype(self.NPOS)
+            self._state[3:] = ip
+
+    @property
+    def state(self):
+        with self.state_lock:
+            return self._state
 
 
 if __name__ == "__main__":
     params = parameters.RosParams()
     logger = logger.RosLog()
-    node = RHCNode(rhctensor.float_tensor(), params, logger, "rhcontroller")
+    node = RHCBlock(rhctensor.float_tensor(), params, logger, "rhcontroller")
 
     signal.signal(signal.SIGINT, node.shutdown)
     rhc = threading.Thread(target=node.start)
