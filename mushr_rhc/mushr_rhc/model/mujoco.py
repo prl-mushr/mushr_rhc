@@ -40,7 +40,7 @@ class MujocoSim:
 
     def connect_rollout_service(self):
         self.logger.info("Waiting for rollout service")
-        self.logger.info(rospy.resolve_name("mujoco_rollout"))
+        self.logger.info("Resolving: " + rospy.resolve_name("mujoco_rollout"))
         rospy.wait_for_service("mujoco_rollout")
         self.logger.info("Found rollout service")
         self.mj_rollout = rospy.ServiceProxy("mujoco_rollout", Rollout, persistent=True)
@@ -65,7 +65,7 @@ class MujocoSim:
             # call svc
             res = self.mj_rollout(self.K, self.T, self.dt, ctrls)
         except Exception as e:
-            self.logger.info("Error getting rollouts: " + str(e))
+            self.logger.error("Couldn't get rollouts: " + str(e))
             self.connect_rollout_service()
 
         for k in range(self.K):

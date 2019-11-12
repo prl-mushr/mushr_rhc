@@ -32,7 +32,7 @@ class BlockPush:
         self.goal_lock = threading.RLock()
         with self.goal_lock:
             self.goal = None
-        self.goal_threshold = self.params.get_float("xy_threshold", default=0.5)
+        self.goal_threshold = self.params.get_float("xy_threshold", default=0.2)
         self.dist_horizon = utils.get_distance_horizon(self.params)
 
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
