@@ -61,12 +61,14 @@ class MujocoSim:
             for c in t:
                 ada.data.append(AckermannDrive(speed=c[0], steering_angle=c[1]))
             ctrls.append(ada)
-        try:
-            # call svc
-            res = self.mj_rollout(self.K, self.T, self.dt, ctrls)
-        except Exception as e:
-            self.logger.error("Couldn't get rollouts: " + str(e))
-            self.connect_rollout_service()
+        res = None
+        while res is None:
+            try:
+                # call svc
+                res = self.mj_rollout(self.K, self.T, self.dt, ctrls)
+            except Exception as e:
+                self.logger.err("Couldn't get rollouts: " + str(e))
+                self.connect_rollout_service()
 
         for k in range(self.K):
             car_poses = res.car_poses[k]

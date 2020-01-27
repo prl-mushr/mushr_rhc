@@ -1,6 +1,7 @@
 <launch>
-    <!--<arg name="tg" default="tl" /> -->
-    <arg name="tg" default="mppi" />
+    <!--<arg name="tg" default="mppi" /> -->
+    <arg name="tg" default="tl" />
+    <arg name="model" default="nearestneighbor" />
     <arg name="map" default="$(find mushr_mujoco_ros)/maps/empty.yaml" />
     <arg name="c2g_map" default="$(arg map)" />
 
@@ -15,13 +16,17 @@
 		<param name="inferred_pose_t" value="/car_pose" />
         <param name="block_pose_t" value="/mushr_mujoco_ros/block_pose" />
         <param name="npos" value="6" />
-        <param name="model_name" value="mujoco" />
+        <param name="model_name" value="$(arg model)" />
         <param name="cost_fn_name" value="block_push" />
         <param name="trajgen_name" value="$(arg tg)" />
 
-        <remap from="mujoco_rollout" to="/mushr_mujoco_ros/rollout" />
+        <param name="x_gpr_file" value="$(find push_data_collector)/x_gpr.pickle" />
+        <param name="y_gpr_file" value="$(find push_data_collector)/y_gpr.pickle" />
+        <param name="theta_gpr_file" value="$(find push_data_collector)/theta_gpr.pickle" />
+        <param name="pushes_start_file" value="$(find push_data_collector)/pushes_x.pickle" />
+        <param name="pushes_file" value="$(find push_data_collector)/pushes_y.pickle" />
 
-        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim_gpr.yaml" />
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/sim/params.yaml" />
     </node>

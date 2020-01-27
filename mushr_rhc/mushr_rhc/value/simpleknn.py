@@ -64,7 +64,9 @@ class SimpleKNN:
         h, w = self.perm_region.shape
 
         # (w * h) / 8000.0 gives rougly a good number of halton points...
-        nhalton = self.params.get_int("value/simpleknn/nhalton", default=(w * h) / 8000.0)
+        nhalton = self.params.get_int(
+            "value/simpleknn/nhalton", default=(w * h) / 8000.0
+        )
         map_cache = mushr_rhc.utils.cache.get_cache_map_dir(self.params, self.map)
         halton_pts_file = os.path.join(map_cache, "halton-{}.npy".format(nhalton))
         if os.path.isfile(halton_pts_file):
@@ -144,7 +146,7 @@ class SimpleKNN:
             length_to_goal = nx.single_source_dijkstra_path_length(G, self.goal_i)
         except nx.NodeNotFound:
             # There was no paths to this point
-            print "no path"
+            print("no path")
             return False
 
         self.reachable_pts = pts_w_goal[length_to_goal.keys()]

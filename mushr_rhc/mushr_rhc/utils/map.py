@@ -10,7 +10,10 @@ from . import cache
 
 
 def world2map(mapdata, poses, out):
-    assert poses.size() == out.size(), "poses.size() %s, out.size() %s" % (str(poses.size()), str(out.size()))
+    assert poses.size() == out.size(), "poses.size() %s, out.size() %s" % (
+        str(poses.size()),
+        str(out.size()),
+    )
 
     out[:, :] = poses
     scale = float(mapdata.resolution)

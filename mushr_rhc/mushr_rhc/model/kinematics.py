@@ -28,18 +28,22 @@ class Kinematics:
         k [int] -- Number of rollouts
         """
         self.K = k
-        self.wheel_base = self.params.get_float("model/wheel_base", default=0.29)
+        self.wheel_base = self.params.get_float("model/wheel_base", default=0.3)
 
         time_horizon = mushr_rhc.utils.get_time_horizon(self.params)
         T = self.params.get_int("T", default=15)
         self.dt = time_horizon / T
 
-        self.sin2beta = self.dtype(self.K)
+        # OLD
+        # self.sin2beta = self.dtype(self.K)
+        self.beta = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)
         self.deltaX = self.dtype(self.K)
         self.deltaY = self.dtype(self.K)
-        self.sin = self.dtype(self.K)
-        self.cos = self.dtype(self.K)
+        self.sin_t = self.dtype(self.K)
+        self.cos_t = self.dtype(self.K)
+        self.sin_t_1 = self.dtype(self.K)
+        self.cos_t_1 = self.dtype(self.K)
 
     def rollout(self, state, trajs, rollouts):
         rollouts.zero_()
@@ -52,6 +56,44 @@ class Kinematics:
             rollouts[:, t] = self.apply(cur_x, trajs[:, t - 1])
 
     def apply(self, pose, ctrl):
+        """
+        Args:
+        pose [(K, NPOS) tensor] -- The current position in "world" coordinates
+        ctrl [(K, NCTRL) tensor] -- Control to apply to the current position
+        Return:
+        [(K, NCTRL) tensor] The next position given the current control
+        """
+        assert pose.size() == (self.K, self.NPOS)
+        assert ctrl.size() == (self.K, self.NCTRL)
+
+        self.beta.copy_(ctrl[:, 1]).tan_().div_(2.0).atan_().add_(self.EPSILON)
+        sinbeta = self.beta.sin()
+
+        self.deltaTheta.copy_(sinbeta).mul_(2).mul_(ctrl[:, 0] * .9).div_(
+            self.wheel_base).mul_(self.dt)
+
+        nextpos = self.dtype(self.K, 3)
+        nextpos.copy_(pose)
+        nextpos[:, 2].add_(self.deltaTheta)
+
+        self.sin_t.copy_(pose[:, 2]).add_(self.beta).sin_()
+        self.cos_t.copy_(pose[:, 2]).add_(self.beta).cos_()
+
+        self.sin_t_1.copy_(nextpos[:, 2]).add_(self.beta).sin_()
+        self.cos_t_1.copy_(nextpos[:, 2]).add_(self.beta).cos_()
+
+        self.deltaX.copy_(self.sin_t_1).sub_(self.sin_t).mul_(
+            self.wheel_base).div_(2).div_(sinbeta)
+
+        self.deltaY.copy_(self.cos_t).sub_(self.cos_t_1).mul_(
+            self.wheel_base).div_(2).div_(sinbeta)
+
+        nextpos[:, 0].add_(self.deltaX)
+        nextpos[:, 1].add_(self.deltaY)
+
+        return nextpos
+
+    def OLDapply(self, pose, ctrl):
         """
         Args:
         pose [(K, NPOS) tensor] -- The current position in "world" coordinates

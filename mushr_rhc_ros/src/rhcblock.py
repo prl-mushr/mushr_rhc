@@ -15,8 +15,8 @@ from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
 from visualization_msgs.msg import Marker
 
-import logger
-import parameters
+import mushr_rhc.defaults.logger as logger
+import mushr_rhc.defaults.parameters as parameters
 import rhcbase
 import rhctensor
 import utils

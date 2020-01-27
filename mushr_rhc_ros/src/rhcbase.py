@@ -20,12 +20,18 @@ import mushr_rhc.worldrep
 import rosvizpath
 import utils
 
-motion_models = {"kinematic": mushr_rhc.model.Kinematics, "mujoco": mushr_rhc.model.MujocoSim}
+motion_models = {
+    "kinematic": mushr_rhc.model.Kinematics,
+    "mujoco": mushr_rhc.model.MujocoSim,
+    "gpr": mushr_rhc.model.GPR,
+    "nearestneighbor": mushr_rhc.model.NearestNeighbor,
+}
 
 trajgens = {
     "tl": mushr_rhc.trajgen.TL,
     "dispersion": mushr_rhc.trajgen.Dispersion,
-    "mppi": mushr_rhc.trajgen.MXPI
+    "mppi": mushr_rhc.trajgen.MXPI,
+    "block_push": mushr_rhc.trajgen.BlockPush,
 }
 
 cost_functions = {"waypoints": mushr_rhc.cost.Waypoints, "block_push": mushr_rhc.cost.BlockPush}

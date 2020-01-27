@@ -4,6 +4,8 @@ import threading
 import Tkinter as tk
 import mushr_rhc.utils as utils
 
+import matplotlib.pyplot as plt
+
 
 class BlockPush:
     def __init__(
@@ -36,8 +38,12 @@ class BlockPush:
         self.dist_horizon = utils.get_distance_horizon(self.params)
 
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
-        self.car_obs_dist_w = self.params.get_float("cost_fn/car_obs_dist_w", default=5.0)
-        self.block_obs_dist_w = self.params.get_float("cost_fn/car_obs_dist_w", default=5.0)
+        self.car_obs_dist_w = self.params.get_float(
+            "cost_fn/car_obs_dist_w", default=5.0
+        )
+        self.block_obs_dist_w = self.params.get_float(
+            "cost_fn/car_obs_dist_w", default=5.0
+        )
         self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
         self.smoothing_discount_rate = self.params.get_float(
             "cost_fn/smoothing_discount_rate", default=0.04
@@ -57,8 +63,19 @@ class BlockPush:
         self.block_car_dist_w = 1.0
         self.block_car_dist_shift = 2.5
         self.debug_vis = False
+        self.debug_with_sliders = False
         if self.debug_vis:
-            threading.Thread(target=self.display_window).start()
+            if self.debug_with_sliders:
+                threading.Thread(target=self.display_window).start()
+
+            self.fig, self.ax = plt.subplots(1, 1)
+            self.ax.set_ylim(-1.0, 15.0)
+            # self.ax.set_xlim()
+            plt.show(False)
+            plt.draw()
+
+            self.background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
+            self.points = None
 
     def display_window(self):
         master = tk.Tk()
@@ -66,8 +83,9 @@ class BlockPush:
         t.pack()
         t.insert(tk.END, "a_diff_w")
         t.config(state="disabled")
-        self.a_diff_scale = tk.Scale(master, from_=0.0, to=10.0, length=300,
-                                     orient=tk.HORIZONTAL, resolution=.1)
+        self.a_diff_scale = tk.Scale(
+            master, from_=0.0, to=10.0, length=300, orient=tk.HORIZONTAL, resolution=0.1
+        )
         self.a_diff_scale.set(self.a_diff_w)
         self.a_diff_scale.pack()
 
@@ -75,8 +93,9 @@ class BlockPush:
         t.pack()
         t.insert(tk.END, "block_car_dist_w")
         t.config(state="disabled")
-        self.block_car_dist_scale = tk.Scale(master, from_=0.0, to=10.0, length=300,
-                                             orient=tk.HORIZONTAL, resolution=.1)
+        self.block_car_dist_scale = tk.Scale(
+            master, from_=0.0, to=10.0, length=300, orient=tk.HORIZONTAL, resolution=0.1
+        )
         self.block_car_dist_scale.set(self.block_car_dist_w)
         self.block_car_dist_scale.pack()
 
@@ -84,8 +103,9 @@ class BlockPush:
         t.pack()
         t.insert(tk.END, "block_car_dist_shift")
         t.config(state="disabled")
-        self.block_car_dist_shift_scale = tk.Scale(master, from_=0.0, to=10.0, length=300,
-                                                   orient=tk.HORIZONTAL, resolution=.1)
+        self.block_car_dist_shift_scale = tk.Scale(
+            master, from_=0.0, to=10.0, length=300, orient=tk.HORIZONTAL, resolution=0.1
+        )
         self.block_car_dist_shift_scale.set(self.block_car_dist_shift)
         self.block_car_dist_shift_scale.pack()
 
@@ -93,8 +113,9 @@ class BlockPush:
         t.pack()
         t.insert(tk.END, "cost2go_w")
         t.config(state="disabled")
-        self.cost2go_w_scale = tk.Scale(master, from_=0.0, to=10.0, length=300,
-                                        orient=tk.HORIZONTAL, resolution=.1)
+        self.cost2go_w_scale = tk.Scale(
+            master, from_=0.0, to=10.0, length=300, orient=tk.HORIZONTAL, resolution=0.1
+        )
         self.cost2go_w_scale.set(self.cost2go_w)
         self.cost2go_w_scale.pack()
 
@@ -104,10 +125,11 @@ class BlockPush:
         tk.mainloop()
 
     def get_weights(self):
-        self.a_diff_w = self.a_diff_scale.get()
-        self.block_car_dist_w = self.block_car_dist_scale.get()
-        self.block_car_dist_shift = self.block_car_dist_shift_scale.get()
-        self.cost2go_w = self.cost2go_w_scale.get()
+        if self.debug_with_sliders:
+            self.a_diff_w = self.a_diff_scale.get()
+            self.block_car_dist_w = self.block_car_dist_scale.get()
+            self.block_car_dist_shift = self.block_car_dist_shift_scale.get()
+            self.cost2go_w = self.cost2go_w_scale.get()
 
     def apply(self, poses):
         assert poses.size() == (self.K, self.T, self.NPOS)
@@ -120,16 +142,18 @@ class BlockPush:
         if self.debug_vis:
             self.get_weights()
 
-        s_block_goal_vec = goal[:2] - poses[0, 1, 3:5]  # (2, )
+        s_block_goal_vec = goal[:2] - poses[0, 0, 3:5]  # (2, )
         s_block_goal_dist = s_block_goal_vec.pow(2).sum(dim=0).pow_(0.5)
 
-        s_block_car_vec = poses[0, 1, :2] - poses[0, 1, 3:5]  # (2,)
+        s_block_car_vec = poses[0, 1, :2] - poses[0, 0, 3:5]  # (2,)
         s_block_car_dist = s_block_car_vec.pow(2).sum(dim=0).pow_(0.5)
 
         final_idx = min(self.T - 1, int(s_block_goal_dist / self.dt))
 
         car_goal_angle = s_block_goal_vec.dot(s_block_car_vec)
-        car_goal_angle = car_goal_angle.div_(torch.norm(s_block_goal_vec) * torch.norm(s_block_car_vec))
+        car_goal_angle = car_goal_angle.div_(
+            torch.norm(s_block_goal_vec) * torch.norm(s_block_car_vec)
+        )
         car_goal_angle = car_goal_angle.acos_()
         if car_goal_angle < 0:
             car_goal_angle += 2 * math.pi
@@ -149,12 +173,17 @@ class BlockPush:
         angles.div_(f_block_goal_dist).div_(f_block_car_dist).acos_()
         angles[angles < 0] += 2 * math.pi
 
-        if not (3.0 / 4.0 * math.pi <= car_goal_angle and car_goal_angle <= 5.0 / 4.0 * math.pi):
+        if not (
+            3.0 / 4.0 * math.pi <= car_goal_angle
+            and car_goal_angle <= 5.0 / 4.0 * math.pi
+        ):
             a_diff = (angles - math.pi).abs_()
             # want trajectory that points opposite to block -> goal
             # AND at least 2m (or something like this) away from block
             all_poses = poses.view(self.K * self.T, self.NPOS)
-            dist_cost = (all_poses[:, :2] - all_poses[:, 3:5]).pow(2).sum(dim=1).pow_(0.5)
+            dist_cost = (
+                (all_poses[:, :2] - all_poses[:, 3:5]).pow(2).sum(dim=1).pow_(0.5)
+            )
             dist_cost.sub_(self.block_car_dist_shift).pow_(2)
             dist_cost = dist_cost.view(self.K, self.T).sum(dim=1)
 
@@ -169,25 +198,34 @@ class BlockPush:
                     angles=angles,
                     car_block_angle_diff=a_diff,
                     block_car_dist_cost=dist_cost,
-                    block_car_dist=f_block_car_dist
+                    block_car_dist=f_block_car_dist,
                 )
 
                 if self.debug_vis:
-                    text = "NAV2BLOCK PHASE\n"
-                    text += "result\t\ta_diff\t\tdist_cost\n"
-                    for v in zip(result, a_diff, dist_cost):
-                        text += "%f\t\t%f\t\t%f\n" % (v[0], v[1], v[2])
+                    if self.debug_with_sliders:
+                        text = "NAV2BLOCK PHASE\n"
+                        text += "result\t\ta_diff\t\tdist_cost\n"
+                        for v in zip(result, a_diff, dist_cost):
+                            text += "%f\t\t%f\t\t%f\n" % (v[0], v[1], v[2])
 
-                    self.weights_text.insert('1.0', text)
+                        self.weights_text.insert("1.0", text)
 
-        elif not(s_block_car_dist < .1
-                 and (car_goal_angle <= 1.0 / 7.0 * math.pi
-                      or car_goal_angle >= 13.0 / 7.0 * math.pi)):
+        elif not (
+            s_block_car_dist < 0.1
+            and (
+                car_goal_angle <= 1.0 / 7.0 * math.pi
+                or car_goal_angle >= 13.0 / 7.0 * math.pi
+            )
+        ):
             # want trajectory that points in the same direction as the block to the goal
             # AND as close to the block as possible (requires first objective tho)
 
-            dist_cost = (poses[:, final_idx, :2] - poses[:, final_idx, 3:5]).pow(2).sum(dim=1).pow_(0.5)
-            cost2go = self.value_fn.get_value(poses[:, final_idx, 3:]).mul(self.cost2go_w)
+            dist_cost = (
+                (poses[:, final_idx, :2] - poses[:, final_idx, 3:5]).pow(2).sum(dim=1)
+            )  # .pow_(0.5)
+            cost2go = self.value_fn.get_value(poses[:, final_idx, 3:]).mul(
+                self.cost2go_w
+            )
             result = cost2go.add(dist_cost)
 
             if self.viz_rollouts_fn:
@@ -196,18 +234,49 @@ class BlockPush:
                     poses,
                     angles=angles,
                     block_car_dist_cost=dist_cost,
-                    block_car_dist=f_block_car_dist
+                    block_car_dist=f_block_car_dist,
                 )
 
                 if self.debug_vis:
-                    text = "COST2GO PHASE\n"
-                    text += "result\t\tcost2go\t\tdist_cost\n"
-                    for v in zip(result, cost2go, dist_cost):
-                        text += "%f\t\t%f\t\t%f\n" % (v[0], v[1], v[2])
+                    if self.debug_with_sliders:
+                        text = "COST2GO PHASE\n"
+                        text += "result\t\tcost2go\t\tdist_cost\n"
+                        for v in zip(result, cost2go, dist_cost):
+                            text += "%f\t\t%f\t\t%f\n" % (v[0], v[1], v[2])
 
-                    self.weights_text.insert('1.0', text)
+                        self.weights_text.insert("1.0", text)
+
+                    perp_theta = poses[0, 0, 2]
+                    perp_theta += math.pi / 2.0
+                    if perp_theta > 2 * math.pi:
+                        perp_theta -= 2 * math.pi
+
+                    car_perp = self.dtype(
+                        [torch.cos(perp_theta), torch.sin(perp_theta)]
+                    )
+                    end_vecs = poses[:, final_idx, :2] - poses[0, 0, :2]
+
+                    projections = torch.mm(end_vecs, car_perp.unsqueeze(-1)).squeeze()
+                    sort_idx = torch.argsort(projections, descending=True)
+
+                    x = projections[sort_idx]
+                    y = result[sort_idx]
+
+                    if self.points is None:
+                        self.points = self.ax.scatter(x, y)
+                    else:
+                        import numpy as np
+
+                        self.points.set_offsets(np.array(zip(x, y)))
+
+                    self.fig.canvas.restore_region(self.background)
+                    self.ax.draw_artist(self.points)
+                    self.fig.canvas.blit(self.ax.bbox)
+
         else:
-            cost2go = self.value_fn.get_value(poses[:, final_idx, 3:]).mul(self.cost2go_w)
+            cost2go = self.value_fn.get_value(poses[:, final_idx, 3:]).mul(
+                self.cost2go_w
+            )
             result = cost2go.add(f_block_goal_dist)
 
             # raw_input("Press enter:")
