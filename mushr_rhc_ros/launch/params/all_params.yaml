@@ -1,1 +1,2 @@
 static_map: "/c2g/static_map"
+inferred_pose_t: "/car_pose"

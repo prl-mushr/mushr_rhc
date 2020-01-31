@@ -1,6 +1,6 @@
 <launch>
-    <!--<arg name="tg" default="tl" /> -->
-    <arg name="tg" default="mppi" />
+    <arg name="tg" default="tl" />
+    <!--<arg name="tg" default="mppi" />-->
     <arg name="map" default="$(find mushr_mujoco_ros)/maps/empty.yaml" />
     <arg name="c2g_map" default="$(arg map)" />
 
@@ -12,9 +12,6 @@
     <node pkg="mushr_rhc_ros" type="rhcblock.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-		<param name="inferred_pose_t" value="/car_pose" />
-        <param name="block_pose_t" value="/mushr_mujoco_ros/block_pose" />
-        <param name="npos" value="6" />
         <param name="model_name" value="mujoco" />
         <param name="cost_fn_name" value="block_push" />
         <param name="trajgen_name" value="$(arg tg)" />

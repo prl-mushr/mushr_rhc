@@ -7,10 +7,11 @@ import cProfile
 import os
 import signal
 import threading
+import torch
 
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import Point, PoseStamped
+from geometry_msgs.msg import Point, PoseStamped, Vector3Stamped
 from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
 from visualization_msgs.msg import Marker
@@ -126,6 +127,16 @@ class RHCBlock(rhcbase.RHCBase):
             queue_size=10,
         )
 
+        if self.params.get_bool("velocity_in_state"):
+            if self.NPOS < 7:
+                self.logger.warn("Want to add velocity to state, but NPOS is only %d" % self.NPOS)
+            rospy.Subscriber(
+                rospy.get_param("~car_velocity_t"),
+                Vector3Stamped,
+                self.cb_car_velocity,
+                queue_size=10,
+            )
+
         self.rp_ctrls = rospy.Publisher(
             self.params.get_str(
                 "ctrl_topic", default="mux/ackermann_cmd_mux/input/navigation"
@@ -200,6 +211,12 @@ class RHCBlock(rhcbase.RHCBase):
             m.scale.x = 0.05
             self.traj_chosen_pub.publish(m)
 
+    def cb_car_velocity(self, msg):
+        with self.state_lock:
+            if self._state is None:
+                self._state = self.dtype(self.NPOS)
+            self._state[6] = torch.sqrt(self.dtype([msg.vector.x ** 2 + msg.vector.y ** 2 + msg.vector.z ** 2]))
+
     def publish_traj(self, traj, rollout):
         assert traj.size() == (self.T, 2)
 
@@ -220,7 +237,7 @@ class RHCBlock(rhcbase.RHCBase):
         with self.state_lock:
             if self._state is None:
                 self._state = self.dtype(self.NPOS)
-            self._state[3:] = ip
+            self._state[3:6] = ip
 
     @property
     def state(self):

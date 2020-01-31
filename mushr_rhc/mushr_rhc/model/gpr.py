@@ -24,6 +24,7 @@ class GPR:
         self.T = self.params.get_int("T", default=21)
         self.NPOS = self.params.get_int("npos", default=3)
         self.wheel_base = self.params.get_float("model/wheel_base", default=0.3)
+        self.velocity_in_state = self.params.get_bool("velocity_in_state", default=False)
 
         self.beta = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)
@@ -75,12 +76,12 @@ class GPR:
         self.p2[:, 1] = self.y_pusher_top
 
         self.b1_rel[:, 0] = -self.block_side_len / 2
-        self.b1_rel[:, 1] = -self.block_side_len / 2
+        self.b1_rel[:, 1] = self.block_side_len / 2
 
-        self.b2_rel[:, 0] = self.block_side_len / 2
+        self.b2_rel[:, 0] = -self.block_side_len / 2
         self.b2_rel[:, 1] = -self.block_side_len / 2
 
-        self.b3_rel[:, 0] = -self.block_side_len / 2
+        self.b3_rel[:, 0] = self.block_side_len / 2
         self.b3_rel[:, 1] = self.block_side_len / 2
 
     def rollout(self, state, trajs, rollouts):
@@ -104,15 +105,23 @@ class GPR:
         assert pose.size() == (self.K, self.NPOS)
         assert ctrl.size() == (self.K, self.NCTRL)
 
+        if self.velocity_in_state:
+            cur_v = pose[:, 6]
+        else:
+            cur_v = ctrl[:, 0]
+
         self.beta.copy_(ctrl[:, 1]).tan_().div_(2.0).atan_().add_(self.EPSILON)
         sinbeta = self.beta.sin()
 
-        self.deltaTheta.copy_(sinbeta).mul_(2).mul_(ctrl[:, 0] * 0.6).div_(
+        self.deltaTheta.copy_(sinbeta).mul_(2).mul_(cur_v).div_(
             self.wheel_base).mul_(self.dt)
 
         nextpos = self.dtype(self.K, self.NPOS)
         nextpos.copy_(pose)
         nextpos[:, 2].add_(self.deltaTheta)
+
+        if self.velocity_in_state:
+            nextpos[:, 6] = torch.min(nextpos[:, 6] * 1.1, ctrl[:, 0])
 
         self.sin_t.copy_(pose[:, 2]).add_(self.beta).sin_()
         self.cos_t.copy_(pose[:, 2]).add_(self.beta).cos_()
@@ -129,7 +138,7 @@ class GPR:
         nextpos[:, 0].add_(self.deltaX)
         nextpos[:, 1].add_(self.deltaY)
 
-        diffs = pose[:, 3:] - pose[:, :3]
+        diffs = pose[:, 3:6] - pose[:, :3]
         rotated = self.dtype(self.K, 3)
 
         sin = pose[:, 2].sin()
@@ -140,16 +149,13 @@ class GPR:
         rotated[:, 2] = diffs[:, 2]
 
         self.clamp_angles(rotated)
-        print "rotated", rotated
-        print "diffs", diffs
 
         i = self.contact(rotated)
 
         if torch.any(i):
-            print "any?"
             self.gpr_input.zero_()
             self.gpr_input[i, :3] = rotated[i]
-            self.gpr_input[i, 3] = ctrl[i, 0]
+            self.gpr_input[i, 3] = cur_v[i]
             self.gpr_input[i, 4] = ctrl[i, 1]
 
             bDeltaX = torch.from_numpy(self.x_gpr.predict(self.gpr_input[i])).float()
@@ -158,17 +164,17 @@ class GPR:
                 self.t_gpr.predict(self.gpr_input[i])
             ).float()
 
-            if (
-                torch.any(torch.abs(bDeltaX) > 0.01)
-                or torch.any(torch.abs(bDeltaY) > 0.01)
-                or torch.any(torch.abs(bDeltaTheta) > 0.05)
-            ):
-                print("Got large output from GPR")
-                print("input:")
-                print(self.gpr_input[i])
-                print("bDeltaX", bDeltaX)
-                print("bDeltaY", bDeltaY)
-                print("bDeltaTheta", bDeltaTheta)
+            # if (
+            #     torch.any(torch.abs(bDeltaX) > 0.05)
+            #     or torch.any(torch.abs(bDeltaY) > 0.05)
+            #     or torch.any(torch.abs(bDeltaTheta) > 0.05)
+            # ):
+            #     print("Got large output from GPR")
+            #     print("input:")
+            #     print(self.gpr_input[i])
+            #     print("bDeltaX", bDeltaX)
+            #     print("bDeltaY", bDeltaY)
+            #     print("bDeltaTheta", bDeltaTheta)
 
             # nextpos[i, 0] = nextpos[i, 0].sub(bDeltaX)
             # nextpos[i, 1] = nextpos[i, 1].sub(bDeltaX)
@@ -205,14 +211,14 @@ class GPR:
 
     def contact(self, diffs):
         # return torch.ones(len(diffs)).type(torch.bool)
-        xy_atol = 1.5e-2  # (1 cm) xy absolute tolerance
-        th_atol = 1e-3  # (0.001 rad) theta absolute tolerance
+        xy_atol = 2e-2  # (1 cm) xy absolute tolerance
 
         con = torch.zeros(len(diffs)).type(torch.bool)
 
         # class 3: handling cases where the block face is parallel to the pusher
+        # also handles class 2l and 2r when theta is almost zero and 2pi
         # fmt: off
-        z = torch.isclose(diffs[:, 2], self.dtype([0]), atol=th_atol)
+        z = (diffs[:, 2] <= 0.05) | (diffs[:, 2] > math.pi / 2 - 0.05)
         con[z] = (
             torch.isclose(
                 diffs[z, 0], self.dtype([self.x_pusher_pos + self.block_side_len / 2.0]), atol=xy_atol
@@ -230,26 +236,56 @@ class GPR:
         # once one branch says there's a hit, just keep it that way.
 
         # take all the other indices
-        z = ~z
+        z = ~con
 
         self.b_sin = torch.sin(diffs[:, 2])
         self.b_cos = torch.cos(diffs[:, 2])
 
         # rotations and translation
         self.b1[z, 0] = self.b_cos[z] * self.b1_rel[z, 0] - self.b_sin[z] * self.b1_rel[z, 1] + diffs[z, 0]
-        self.b1[z, 1] = self.b_sin[z] * self.b1_rel[z, 0] + self.b_sin[z] * self.b1_rel[z, 1] + diffs[z, 1]
+        self.b1[z, 1] = self.b_sin[z] * self.b1_rel[z, 0] + self.b_cos[z] * self.b1_rel[z, 1] + diffs[z, 1]
 
         self.b2[z, 0] = self.b_cos[z] * self.b2_rel[z, 0] - self.b_sin[z] * self.b2_rel[z, 1] + diffs[z, 0]
-        self.b2[z, 1] = self.b_sin[z] * self.b2_rel[z, 0] + self.b_sin[z] * self.b2_rel[z, 1] + diffs[z, 1]
+        self.b2[z, 1] = self.b_sin[z] * self.b2_rel[z, 0] + self.b_cos[z] * self.b2_rel[z, 1] + diffs[z, 1]
 
         self.b3[z, 0] = self.b_cos[z] * self.b3_rel[z, 0] - self.b_sin[z] * self.b3_rel[z, 1] + diffs[z, 0]
-        self.b3[z, 1] = self.b_sin[z] * self.b3_rel[z, 0] + self.b_sin[z] * self.b3_rel[z, 1] + diffs[z, 1]
+        self.b3[z, 1] = self.b_sin[z] * self.b3_rel[z, 0] + self.b_cos[z] * self.b3_rel[z, 1] + diffs[z, 1]
 
         # class 1: the block is rotated, but the edge closest to the pusher is in front of the pusher.
-        c1 = z & (self.b1[:, 1] > self.p1[:, 1]) & (self.b1[:, 1] < self.p2[:, 1])
+        c1 = ~con & (self.b1[:, 1] > self.p1[:, 1])\
+                  & (self.b1[:, 1] < self.p2[:, 1])
 
         if torch.any(c1):
             con[c1] = torch.isclose(self.b1[c1, 0], self.p1[c1, 0], atol=xy_atol)
 
+        # class 2r
+        # see if the end of the pusher (a point) is on the line segment of the block
+        ms = (self.b1[:, 1] - self.b3[:, 1]) / (self.b1[:, 0] - self.b3[:, 0])
+        bs = self.b1[:, 1] - ms * self.b1[:, 0]
+
+        c2r = ~con & (self.p1[:, 0] >= self.b1[:, 0])\
+                   & (self.p1[:, 0] <= self.b3[:, 0])
+
+        R = 0.02
+
+        if torch.any(c2r):
+            confx = self.p1[:, 0] + self.b_cos * R
+            confy = self.p1[:, 1] - self.b_sin * R
+            con[c2r] = torch.isclose(self.p1[c2r, 0] * ms[c2r] + bs[c2r], self.p1[c2r, 1], atol=xy_atol)\
+                | ((confy[c2r] < ms[c2r] * confx[c2r] + bs[c2r]) & (self.b1[c2r, 0] < 0))
+
+        # class 2l
+        # see if the end of the pusher (a point) is on the line segment of the block
+        ms = (self.b1[:, 1] - self.b2[:, 1]) / (self.b1[:, 0] - self.b2[:, 0])
+        bs = self.b1[:, 1] - ms * self.b1[:, 0]
+
+        c2l = ~con & (self.p2[:, 0] >= self.b1[:, 0])\
+                   & (self.p2[:, 0] <= self.b2[:, 0])
+
+        if torch.any(c2l):
+            confx = self.p2[:, 0] + self.b_cos * R
+            confy = self.p2[:, 1] + self.b_sin * R
+            con[c2l] = torch.isclose(self.p2[c2l, 0] * ms[c2l] + bs[c2l], self.p2[c2l, 1], atol=xy_atol)\
+                | ((confy[c2l] > ms[c2l] * confx[c2l] + bs[c2l]) & (self.b1[c2l, 0] > 0))
+
         return con
-        # return torch.ones(len(diffs)).type(torch.bool)

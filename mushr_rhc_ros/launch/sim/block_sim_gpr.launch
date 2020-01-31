@@ -13,18 +13,15 @@
     <node pkg="mushr_rhc_ros" type="rhcblock.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-		<param name="inferred_pose_t" value="/car_pose" />
-        <param name="block_pose_t" value="/mushr_mujoco_ros/block_pose" />
-        <param name="npos" value="6" />
         <param name="model_name" value="$(arg model)" />
         <param name="cost_fn_name" value="block_push" />
         <param name="trajgen_name" value="$(arg tg)" />
 
-        <param name="x_gpr_file" value="$(find push_data_collector)/x_gpr.pickle" />
-        <param name="y_gpr_file" value="$(find push_data_collector)/y_gpr.pickle" />
-        <param name="theta_gpr_file" value="$(find push_data_collector)/theta_gpr.pickle" />
+        <param name="x_gpr_file" value="$(find push_data_collector)/x_gpr_jan_26.pickle" />
+        <param name="y_gpr_file" value="$(find push_data_collector)/y_gpr_jan_26.pickle" />
+        <param name="theta_gpr_file" value="$(find push_data_collector)/t_gpr_jan_26.pickle" />
 
-        <rosparam file="$(find push_data_collector)/params/pusher_measures.yaml" />
+        <rosparam ns="/pusher_measures" file="$(find push_data_collector)/params/pusher_measures.yaml" />
 
         <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim_gpr.yaml" />
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />

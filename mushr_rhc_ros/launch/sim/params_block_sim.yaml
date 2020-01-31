@@ -1,15 +1,22 @@
-T: 16
-K: 46
+T: 40
+K: 20
 K_backwards: 0
 
-debug/flag/viz_rollouts: true
+debug/flag/viz_rollouts: false
 debug/viz_rollouts/print_stats: false
 
+velocity_in_state: true
+npos: 7
+
+block_pose_t: "/mushr_mujoco_ros/block_pose"
+inferred_pose_t: "/car_pose"
+car_velocity_t: "/mushr_mujoco_ros/velocimeter"
+
 horizon:
-    distance: 0.75
-    time: -1.5
+    # distance: 0.75
+    time: .66
 trajgen:
-    desired_speed: .8
+    desired_speed: .5
     min_delta: -0.34
     max_delta: 0.34
     mxpi:

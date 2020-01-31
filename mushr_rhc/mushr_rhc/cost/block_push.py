@@ -45,23 +45,13 @@ class BlockPush:
             "cost_fn/car_obs_dist_w", default=5.0
         )
         self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
-        self.smoothing_discount_rate = self.params.get_float(
-            "cost_fn/smoothing_discount_rate", default=0.04
-        )
         self.bounds_cost = self.params.get_float("cost_fn/bounds_cost", default=100.0)
-        self.block_dist_w = self.params.get_float("cost_fn/block_dist_w", default=10.0)
 
-        self.obs_dist_cooloff = torch.arange(1, self.T + 1).mul_(2).type(self.dtype)
-
-        self.discount = self.dtype(self.T - 1)
-
-        self.discount[:] = 1 + self.smoothing_discount_rate
-        self.discount.pow_(torch.arange(0, self.T - 1).type(self.dtype) * -1)
         self.world_rep.reset()
 
         self.a_diff_w = 1.0
         self.block_car_dist_w = 1.0
-        self.block_car_dist_shift = 2.5
+        self.block_car_dist_shift = 2.0
         self.debug_vis = False
         self.debug_with_sliders = False
         if self.debug_vis:
@@ -145,7 +135,7 @@ class BlockPush:
         s_block_goal_vec = goal[:2] - poses[0, 0, 3:5]  # (2, )
         s_block_goal_dist = s_block_goal_vec.pow(2).sum(dim=0).pow_(0.5)
 
-        s_block_car_vec = poses[0, 1, :2] - poses[0, 0, 3:5]  # (2,)
+        s_block_car_vec = poses[0, 0, :2] - poses[0, 0, 3:5]  # (2,)
         s_block_car_dist = s_block_car_vec.pow(2).sum(dim=0).pow_(0.5)
 
         final_idx = min(self.T - 1, int(s_block_goal_dist / self.dt))
