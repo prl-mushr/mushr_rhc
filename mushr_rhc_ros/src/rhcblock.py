@@ -11,10 +11,11 @@ import torch
 
 import rospy
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import Point, PoseStamped, Vector3Stamped
+from geometry_msgs.msg import Point, Pose, PoseStamped, PoseWithCovarianceStamped, Vector3Stamped
 from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
+from mushr_rhc_ros.msg import SimpleTrajectory
 
 import mushr_rhc.defaults.logger as logger
 import mushr_rhc.defaults.parameters as parameters
@@ -69,6 +70,10 @@ class RHCBlock(rhcbase.RHCBase):
         self.logger.info("Initialized")
 
         while not rospy.is_shutdown() and self.run:
+            if self.state is not None and torch.norm(self.state[:2] - self.state[3:5]) > 0.5:
+                self.expr_failed.publish(Empty())
+                self.goal_event.clear()
+
             next_traj, rollout = self.run_loop(self.state)
             with self.traj_pub_lock:
                 if rollout is not None:
@@ -114,6 +119,10 @@ class RHCBlock(rhcbase.RHCBase):
         )
 
         rospy.Subscriber(
+            "~trajectory", SimpleTrajectory, self.cb_trajectory, queue_size=1
+        )
+
+        rospy.Subscriber(
             rospy.get_param("~inferred_pose_t"),
             PoseStamped,
             self.cb_pose,
@@ -144,12 +153,16 @@ class RHCBlock(rhcbase.RHCBase):
             AckermannDriveStamped,
             queue_size=2,
         )
+        self.traj_pub_block_pose = rospy.Publisher("/mushr_mujoco_ros/initialpose_block", Pose, queue_size=1)
+        self.traj_pub_car_pose = rospy.Publisher("/initialpose", PoseWithCovarianceStamped, queue_size=1)
 
         traj_chosen_t = self.params.get_str("traj_chosen_topic", default="~traj_chosen")
         self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
+        self.viz_traj_pub = rospy.Publisher("~ref_traj", MarkerArray, queue_size=10)
 
         # For the experiment framework, need indicators to listen on
         self.expr_at_goal = rospy.Publisher("/experiment_tool/finished", Empty, queue_size=1)
+        self.expr_failed = rospy.Publisher("/experiment_tool/failed", Empty, queue_size=1)
 
     def srv_reset_hard(self, msg):
         """
@@ -175,6 +188,55 @@ class RHCBlock(rhcbase.RHCBase):
         self.reset_lock.release()
         rospy.loginfo("End soft reset")
         return []
+
+    def cb_trajectory(self, msg):
+        traj = torch.empty((len(msg.xs), 3)).type(self.dtype)
+        for i in range(len(msg.xs)):
+            traj[i, 0] = msg.xs[i]
+            traj[i, 1] = msg.ys[i]
+            traj[i, 2] = msg.thetas[i]
+
+        with self.reset_lock:
+            self.rhctrl.reset()
+            self.goal_event.clear()
+
+        self.viz_trajectory(msg)
+        self.traj_pub_block_pose.publish(msg.block_pose)
+        car_init_pose = PoseWithCovarianceStamped()
+        car_init_pose.pose.pose = msg.car_pose
+        self.traj_pub_car_pose.publish(car_init_pose)
+
+        if not self.rhctrl.set_trajectory(traj):
+            self.logger.err("Couldn't set reference trajectory")
+            return
+        else:
+            self.logger.info("Trajectory set")
+
+        self.goal_event.set()
+
+    def viz_trajectory(self, traj):
+        ma = MarkerArray()
+        for i in range(len(traj.xs)):
+            m = Marker()
+            m.header.frame_id = "map"
+            m.id = i
+            m.action = m.ADD
+            m.type = m.ARROW
+            m.pose.position.x = traj.xs[i]
+            m.pose.position.y = traj.ys[i]
+
+            m.scale.x = 0.05
+            m.scale.y = 0.05
+            m.scale.z = 0.01
+
+            m.color.r = 0.0
+            m.color.g = 0.5
+            m.color.b = 0.0
+            m.color.a = 1.0
+            m.pose.orientation = utils.angle_to_rosquaternion(traj.thetas[i])
+            ma.markers.append(m)
+
+        self.viz_traj_pub.publish(ma)
 
     def cb_goal(self, msg):
         goal = self.dtype(utils.rospose_to_posetup(msg.pose))

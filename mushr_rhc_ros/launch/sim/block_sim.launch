@@ -1,6 +1,4 @@
 <launch>
-    <arg name="tg" default="tl" />
-    <!--<arg name="tg" default="mppi" />-->
     <arg name="map" default="$(find mushr_mujoco_ros)/maps/empty.yaml" />
     <arg name="c2g_map" default="$(arg map)" />
 
@@ -12,13 +10,9 @@
     <node pkg="mushr_rhc_ros" type="rhcblock.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <param name="model_name" value="mujoco" />
-        <param name="cost_fn_name" value="block_push" />
-        <param name="trajgen_name" value="$(arg tg)" />
-
         <remap from="mujoco_rollout" to="/mushr_mujoco_ros/rollout" />
 
-        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim.yaml" subst_value="true"/>
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/sim/params.yaml" />
     </node>

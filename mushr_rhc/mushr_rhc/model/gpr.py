@@ -3,6 +3,10 @@ import mushr_rhc.utils
 import torch
 import pickle
 import math
+import numpy as np
+
+import rospy
+from std_srvs.srv import SetBool
 
 
 class GPR:
@@ -18,6 +22,15 @@ class GPR:
         self.t_gpr = gprs[2]
 
         self.reset()
+
+    def load_gpr_scaler(self, param):
+        with open(self.params.get_str("%s_gpr_file" % param), "rb") as f:
+            gpr = pickle.load(f)
+        with open(self.params.get_str("%s_in_scaler_file" % param), "rb") as f:
+            in_scaler = pickle.load(f)
+        with open(self.params.get_str("%s_out_scaler_file" % param), "rb") as f:
+            out_scaler = pickle.load(f)
+        return gpr, in_scaler, out_scaler
 
     def reset(self):
         self.K = self.params.get_int("K", default=62)
@@ -40,23 +53,22 @@ class GPR:
         time_horizon = mushr_rhc.utils.get_time_horizon(self.params)
         self.dt = time_horizon / self.T
 
-        if not self.x_gpr:
-            with open(self.params.get_str("x_gpr_file"), "rb") as f:
-                self.x_gpr = pickle.load(f)
+        self.x_gpr, self.x_in_scaler, self.x_out_scaler = self.load_gpr_scaler("x")
+        self.y_gpr, self.y_in_scaler, self.y_out_scaler = self.load_gpr_scaler("y")
+        self.t_gpr, self.t_in_scaler, self.t_out_scaler = self.load_gpr_scaler("t")
 
-        if not self.y_gpr:
-            with open(self.params.get_str("y_gpr_file"), "rb") as f:
-                self.y_gpr = pickle.load(f)
+        cost_fn = self.params.get_str("cost_fn_name")
+        self.with_cov = cost_fn == "block_ref_traj_cov"
 
-        if not self.t_gpr:
-            with open(self.params.get_str("theta_gpr_file"), "rb") as f:
-                self.t_gpr = pickle.load(f)
+        if self.params.get_bool("pause_on_rollout"):
+            rospy.wait_for_service("/mushr_mujoco_ros/pause_sim_rhc_wait_for_control")
+            self.rollout_pause = rospy.ServiceProxy("/mushr_mujoco_ros/pause_sim_rhc_wait_for_control", SetBool)
 
-        self.x_pusher_pos = self.params.get_float("x_pusher_pos")
-        self.y_pusher_len = self.params.get_float("y_pusher_len")
-        self.y_pusher_top = self.params.get_float("y_pusher_top")
-        self.y_pusher_bot = self.params.get_float("y_pusher_bot")
-        self.block_side_len = self.params.get_float("block_side_len")
+        self.x_pusher_pos = self.params.get_float("/pusher_measures/x_pusher_pos")
+        self.y_pusher_len = self.params.get_float("/pusher_measures/y_pusher_len")
+        self.y_pusher_top = self.params.get_float("/pusher_measures/y_pusher_top")
+        self.y_pusher_bot = self.params.get_float("/pusher_measures/y_pusher_bot")
+        self.block_side_len = self.params.get_float("/pusher_measures/block_side_len")
 
         self.p1 = self.dtype(self.K, 2)
         self.p2 = self.dtype(self.K, 2)
@@ -85,14 +97,24 @@ class GPR:
         self.b3_rel[:, 1] = self.block_side_len / 2
 
     def rollout(self, state, trajs, rollouts):
+        if self.params.get_bool("pause_on_rollout"):
+            self.rollout_pause(True)
+            print "good"
+
         rollouts.zero_()
+        cov = self.dtype(self.K, self.T, 3)
 
         # For each K trial, the first position is at the current position
         rollouts[:, 0] = state.expand_as(rollouts[:, 0])
 
+        # delta prior probability, so no covariance
+        cov[:, 0, :] = 0.0
+
         for t in range(1, self.T):
             cur_x = rollouts[:, t - 1]
-            rollouts[:, t] = self.apply(cur_x, trajs[:, t - 1])
+            rollouts[:, t], cov[:, t] = self.apply(cur_x, trajs[:, t - 1])
+
+        return cov
 
     def apply(self, pose, ctrl):
         """
@@ -116,6 +138,7 @@ class GPR:
         self.deltaTheta.copy_(sinbeta).mul_(2).mul_(cur_v).div_(
             self.wheel_base).mul_(self.dt)
 
+        cov = self.dtype(self.K, 3).zero_()
         nextpos = self.dtype(self.K, self.NPOS)
         nextpos.copy_(pose)
         nextpos[:, 2].add_(self.deltaTheta)
@@ -158,26 +181,26 @@ class GPR:
             self.gpr_input[i, 3] = cur_v[i]
             self.gpr_input[i, 4] = ctrl[i, 1]
 
-            bDeltaX = torch.from_numpy(self.x_gpr.predict(self.gpr_input[i])).float()
-            bDeltaY = torch.from_numpy(self.y_gpr.predict(self.gpr_input[i])).float()
-            bDeltaTheta = torch.from_numpy(
-                self.t_gpr.predict(self.gpr_input[i])
-            ).float()
+            bDeltaX, cov[i, 0] = self.predict(self.x_gpr,
+                                              self.gpr_input[i],
+                                              self.x_in_scaler,
+                                              0,
+                                              self.x_out_scaler,
+                                              self.with_cov)
 
-            # if (
-            #     torch.any(torch.abs(bDeltaX) > 0.05)
-            #     or torch.any(torch.abs(bDeltaY) > 0.05)
-            #     or torch.any(torch.abs(bDeltaTheta) > 0.05)
-            # ):
-            #     print("Got large output from GPR")
-            #     print("input:")
-            #     print(self.gpr_input[i])
-            #     print("bDeltaX", bDeltaX)
-            #     print("bDeltaY", bDeltaY)
-            #     print("bDeltaTheta", bDeltaTheta)
+            bDeltaY, cov[i, 1] = self.predict(self.y_gpr,
+                                              self.gpr_input[i],
+                                              self.y_in_scaler,
+                                              1,
+                                              self.y_out_scaler,
+                                              self.with_cov)
 
-            # nextpos[i, 0] = nextpos[i, 0].sub(bDeltaX)
-            # nextpos[i, 1] = nextpos[i, 1].sub(bDeltaX)
+            bDeltaT, cov[i, 2] = self.predict(self.t_gpr,
+                                              self.gpr_input[i],
+                                              self.t_in_scaler,
+                                              2,
+                                              self.t_out_scaler,
+                                              self.with_cov)
 
             # rotate back into world frame only bDeltaX and bDeltaY
             dx = cos[i] * bDeltaX - sin[i] * bDeltaY
@@ -185,9 +208,22 @@ class GPR:
 
             nextpos[i, 3] = nextpos[i, 3].add(dx)
             nextpos[i, 4] = nextpos[i, 4].add(dy)
-            nextpos[i, 5] = nextpos[i, 5].add(bDeltaTheta)
+            nextpos[i, 5] = nextpos[i, 5].add(bDeltaT)
 
-        return nextpos
+        return nextpos, cov
+
+    def predict(self, gpr, X, in_scaler, y_idx, out_scaler, return_cov):
+        mscale = out_scaler.mean_[y_idx]
+        vscale = out_scaler.var_[y_idx]
+        if return_cov:
+            means, std = gpr.predict(in_scaler.transform(X), return_cov=True)
+            tm = torch.from_numpy(mscale + vscale * means).float()
+            tcov = torch.from_numpy(vscale * np.diag(std)).float()
+            return tm, tcov
+        else:
+            means = gpr.predict(in_scaler.transform(X), return_cov=False)
+            tm = torch.from_numpy(mscale + vscale * means).float()
+            return tm, torch.zeros(len(X))
 
     def clamp_angles(self, diffs):
         # clamp angles to under pi/2

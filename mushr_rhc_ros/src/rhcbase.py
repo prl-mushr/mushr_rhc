@@ -34,7 +34,12 @@ trajgens = {
     "block_push": mushr_rhc.trajgen.BlockPush,
 }
 
-cost_functions = {"waypoints": mushr_rhc.cost.Waypoints, "block_push": mushr_rhc.cost.BlockPush}
+cost_functions = {
+    "waypoints": mushr_rhc.cost.Waypoints,
+    "block_push": mushr_rhc.cost.BlockPush,
+    "block_ref_traj_means": mushr_rhc.cost.BlockRefTrajectory,
+    "block_ref_traj_cov": mushr_rhc.cost.BlockRefTrajectoryCovariance,
+}
 
 value_functions = {"simpleknn": mushr_rhc.value.SimpleKNN}
 

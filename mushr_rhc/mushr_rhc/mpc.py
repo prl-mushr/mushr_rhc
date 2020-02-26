@@ -50,9 +50,13 @@ class MPC:
         trajs = self.trajgen.get_control_trajectories(v)
         assert trajs.size() == (self.K, self.T, 2)
 
-        self.kinematics.rollout(state, trajs, self.rollouts)
+        rollout_info = self.kinematics.rollout(state, trajs, self.rollouts)
 
-        costs = self.cost.apply(self.rollouts)
+        if rollout_info is not None:
+            costs = self.cost.apply(self.rollouts, rollout_info)
+        else:
+            costs = self.cost.apply(self.rollouts)
+
         result, idx = self.trajgen.generate_control(trajs, costs)
         if idx is None:
             return result, None
@@ -66,3 +70,7 @@ class MPC:
         """
         assert goal.size() == (3,)
         return self.cost.set_goal(goal)
+
+    def set_trajectory(self, traj):
+        assert traj.size()[1] == 3
+        return self.cost.set_trajectory(traj)

@@ -3,17 +3,17 @@ traj_gen_name: "tl"
 # cost_fn_name: "block_ref_traj_cov"
 cost_fn_name: "block_ref_traj_means"
 
-x_gpr_file: "$(find push_data_collector)/out_train_gprs/100-7/x_gpr.pickle"
-x_in_scaler_file: "$(find push_data_collector)/out_train_gprs/100-7/x_scaler.pickle"
-x_out_scaler_file: "$(find push_data_collector)/out_train_gprs/100-7/y_scaler.pickle"
+x_gpr_file: "$(find push_data_collector)/real_world/first_train/x_gpr.pickle"
+x_in_scaler_file: "$(find push_data_collector)/real_world/first_train/x_scaler.pickle"
+x_out_scaler_file: "$(find push_data_collector)/real_world/first_train/y_scaler.pickle"
 
-y_gpr_file: "$(find push_data_collector)/out_train_gprs/100-3/y_gpr.pickle"
-y_in_scaler_file: "$(find push_data_collector)/out_train_gprs/100-3/x_scaler.pickle"
-y_out_scaler_file: "$(find push_data_collector)/out_train_gprs/100-3/y_scaler.pickle"
+y_gpr_file: "$(find push_data_collector)/real_world/first_train/y_gpr.pickle"
+y_in_scaler_file: "$(find push_data_collector)/real_world/first_train/x_scaler.pickle"
+y_out_scaler_file: "$(find push_data_collector)/real_world/first_train/y_scaler.pickle"
 
-t_gpr_file: "$(find push_data_collector)/out_train_gprs/100-5/t_gpr.pickle"
-t_in_scaler_file: "$(find push_data_collector)/out_train_gprs/100-5/x_scaler.pickle"
-t_out_scaler_file: "$(find push_data_collector)/out_train_gprs/100-5/y_scaler.pickle"
+t_gpr_file: "$(find push_data_collector)/real_world/first_train/t_gpr.pickle"
+t_in_scaler_file: "$(find push_data_collector)/real_world/first_train/x_scaler.pickle"
+t_out_scaler_file: "$(find push_data_collector)/real_world/first_train/y_scaler.pickle"
 
 T: 40
 K: 40

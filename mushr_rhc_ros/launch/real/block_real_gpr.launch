@@ -1,19 +1,17 @@
 <launch>
-    <arg name="map" default="$(find mushr_mujoco_ros)/maps/empty.yaml" />
     <arg name="c2g_map" default="$(arg map)" />
 
-    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch">
-        <arg name="map" default="$(arg map)" />
-        <arg name="c2g_map" default="$(arg c2g_map)" />
-    </include>
+    <include file="$(find mushr_rhc_ros)/launch/mapserver.launch" />
 
     <include file="$(find pixel_art_common)/launch/pusher_measures.launch" />
 
     <node pkg="mushr_rhc_ros" type="rhcblock.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
+		<param name="inferred_pose_t" value="/pf/inferred_pose" />
+
         <rosparam file="$(find mushr_rhc_ros)/launch/sim/params_block_sim_gpr.yaml" subst_value="true" />
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
-        <rosparam file="$(find mushr_rhc_ros)/launch/sim/params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/real/params.yaml" />
     </node>
 </launch>

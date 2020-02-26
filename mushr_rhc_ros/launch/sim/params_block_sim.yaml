@@ -1,11 +1,16 @@
+model_name: "mujoco"
+traj_gen_name: "tl"
+cost_fn_name: "block_ref_traj_means"  # _cov
+
 T: 40
-K: 20
+K: 40
 K_backwards: 0
 
+pause_on_rollout: false
 debug/flag/viz_rollouts: false
 debug/viz_rollouts/print_stats: false
 
-velocity_in_state: true
+velocity_in_state: false
 npos: 7
 
 block_pose_t: "/mushr_mujoco_ros/block_pose"
@@ -14,7 +19,7 @@ car_velocity_t: "/mushr_mujoco_ros/velocimeter"
 
 horizon:
     # distance: 0.75
-    time: .66
+    time: 0.66
 trajgen:
     desired_speed: .5
     min_delta: -0.34

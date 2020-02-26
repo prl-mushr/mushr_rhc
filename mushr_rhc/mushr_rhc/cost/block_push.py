@@ -4,8 +4,6 @@ import threading
 import Tkinter as tk
 import mushr_rhc.utils as utils
 
-import matplotlib.pyplot as plt
-
 
 class BlockPush:
     def __init__(
@@ -57,15 +55,6 @@ class BlockPush:
         if self.debug_vis:
             if self.debug_with_sliders:
                 threading.Thread(target=self.display_window).start()
-
-            self.fig, self.ax = plt.subplots(1, 1)
-            self.ax.set_ylim(-1.0, 15.0)
-            # self.ax.set_xlim()
-            plt.show(False)
-            plt.draw()
-
-            self.background = self.fig.canvas.copy_from_bbox(self.ax.bbox)
-            self.points = None
 
     def display_window(self):
         master = tk.Tk()
@@ -175,7 +164,8 @@ class BlockPush:
                 (all_poses[:, :2] - all_poses[:, 3:5]).pow(2).sum(dim=1).pow_(0.5)
             )
             dist_cost.sub_(self.block_car_dist_shift).pow_(2)
-            dist_cost = dist_cost.view(self.K, self.T).sum(dim=1)
+            # dist_cost = dist_cost.view(self.K, self.T).sum(dim=1)
+            dist_cost = dist_cost.view(self.K, self.T)[:, self.T - 1]
 
             a_diff.mul_(self.a_diff_w)
             dist_cost.mul_(self.block_car_dist_w)
@@ -201,11 +191,11 @@ class BlockPush:
                         self.weights_text.insert("1.0", text)
 
         elif not (
-            s_block_car_dist < 0.1
-            and (
-                car_goal_angle <= 1.0 / 7.0 * math.pi
-                or car_goal_angle >= 13.0 / 7.0 * math.pi
-            )
+            s_block_car_dist < 0.5
+            # and (
+            #     car_goal_angle <= 1.0 / 7.0 * math.pi
+            #     or car_goal_angle >= 13.0 / 7.0 * math.pi
+            # )
         ):
             # want trajectory that points in the same direction as the block to the goal
             # AND as close to the block as possible (requires first objective tho)
@@ -236,38 +226,23 @@ class BlockPush:
 
                         self.weights_text.insert("1.0", text)
 
-                    perp_theta = poses[0, 0, 2]
-                    perp_theta += math.pi / 2.0
-                    if perp_theta > 2 * math.pi:
-                        perp_theta -= 2 * math.pi
-
-                    car_perp = self.dtype(
-                        [torch.cos(perp_theta), torch.sin(perp_theta)]
-                    )
-                    end_vecs = poses[:, final_idx, :2] - poses[0, 0, :2]
-
-                    projections = torch.mm(end_vecs, car_perp.unsqueeze(-1)).squeeze()
-                    sort_idx = torch.argsort(projections, descending=True)
-
-                    x = projections[sort_idx]
-                    y = result[sort_idx]
-
-                    if self.points is None:
-                        self.points = self.ax.scatter(x, y)
-                    else:
-                        import numpy as np
-
-                        self.points.set_offsets(np.array(zip(x, y)))
-
-                    self.fig.canvas.restore_region(self.background)
-                    self.ax.draw_artist(self.points)
-                    self.fig.canvas.blit(self.ax.bbox)
-
         else:
             cost2go = self.value_fn.get_value(poses[:, final_idx, 3:]).mul(
                 self.cost2go_w
             )
             result = cost2go.add(f_block_goal_dist)
+
+            if self.viz_rollouts_fn:
+                self.viz_rollouts_fn(
+                    result,
+                    poses,
+                )
+
+                if self.debug_vis:
+                    if self.debug_with_sliders:
+                        text = "GET TO THE GOAL\n"
+
+                        self.weights_text.insert("1.0", text)
 
             # raw_input("Press enter:")
         return result
