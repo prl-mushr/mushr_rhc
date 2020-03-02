@@ -4,6 +4,7 @@
 import torch
 import mushr_rhc.utils as utils
 import threading
+import math
 
 # send marker
 import rospy
@@ -47,8 +48,10 @@ class BlockRefTrajectory:
             self.goal = None
         self.goal_threshold = self.params.get_float("xy_threshold", default=0.2)
 
+        horizon = utils.get_distance_horizon(self.params)
         self.waypoint_lookahead = 0.2  # self.dist_horizon
-        self.waypoint_idx_lookahead = 1  # 3
+        self.waypoint_idx_lookahead = int(math.ceil(horizon / 0.5)) + 1  # 3
+        print self.waypoint_idx_lookahead
 
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=3.5)
 
@@ -122,19 +125,6 @@ class BlockRefTrajectory:
             self.BLOCKARRAY.publish(ma)
 
         return result
-
-    # def get_waypoint(self, state):
-    #     if len(self.traj[self.old_ref_idx:]) == 0:
-    #         return self.old_ref_idx
-
-    #     dists = torch.norm(self.traj[self.old_ref_idx:, :2] - state[:2], dim=1)
-    #     # print(dists)
-    #     idx = 0
-    #     while (dists[idx] < self.waypoint_lookahead):
-    #         idx += 1
-
-    #     self.old_ref_idx = self.old_ref_idx + idx
-    #     return self.traj[self.old_ref_idx]
 
     def get_waypoint(self, state):
         dists = torch.norm(self.traj[:, :2] - state[:2], dim=1)

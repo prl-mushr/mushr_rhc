@@ -30,6 +30,8 @@ class MPC:
         self.goal_threshold = self.dtype([xy_thresh, xy_thresh])
         self.desired_speed = self.params.get_float("trajgen/desired_speed", default=1.0)
 
+        self.backwards = False
+
         if not init:
             self.trajgen.reset()
             self.kinematics.reset()
@@ -46,6 +48,8 @@ class MPC:
             return None, None
 
         v = self.cost.get_desired_speed(self.desired_speed, state)
+        if self.backwards:
+            v = -v
 
         trajs = self.trajgen.get_control_trajectories(v)
         assert trajs.size() == (self.K, self.T, 2)
@@ -53,9 +57,9 @@ class MPC:
         rollout_info = self.kinematics.rollout(state, trajs, self.rollouts)
 
         if rollout_info is not None:
-            costs = self.cost.apply(self.rollouts, rollout_info)
+            costs, self.backwards = self.cost.apply(self.rollouts, rollout_info)
         else:
-            costs = self.cost.apply(self.rollouts)
+            costs, self.backwards = self.cost.apply(self.rollouts)
 
         result, idx = self.trajgen.generate_control(trajs, costs)
         if idx is None:

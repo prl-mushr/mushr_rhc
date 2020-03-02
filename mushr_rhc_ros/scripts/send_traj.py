@@ -23,8 +23,11 @@ plans = {
     'right-10': lambda: trajgen.right_turn(10.0, 6.0),
     'right-4': lambda: trajgen.right_turn(4.0, 6.0),
     'right-2.5': lambda: trajgen.right_turn(2.5, 6.0),
-    'left-kink': lambda: trajgen.left_kink(1.0, 4),
-    'right-kink': lambda: trajgen.right_kink(2.0, 4),
+    'left-kink-3.0': lambda: trajgen.left_kink(3.0, 6.),
+    'left-kink-5.0': lambda: trajgen.left_kink(5.0, 6.),
+    'right-kink-2.0': lambda: trajgen.right_kink(2.0, 6.),
+    'right-kink-5.0': lambda: trajgen.right_kink(5.0, 6.),
+    'real': trajgen.real_traj,
 }
 
 

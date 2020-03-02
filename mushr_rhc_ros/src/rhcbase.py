@@ -39,6 +39,7 @@ cost_functions = {
     "block_push": mushr_rhc.cost.BlockPush,
     "block_ref_traj_means": mushr_rhc.cost.BlockRefTrajectory,
     "block_ref_traj_cov": mushr_rhc.cost.BlockRefTrajectoryCovariance,
+    "block_ref_traj_complex": mushr_rhc.cost.BlockRefTrajectoryComplex,
 }
 
 value_functions = {"simpleknn": mushr_rhc.value.SimpleKNN}
@@ -119,7 +120,7 @@ class RHCBase(object):
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 
-        self.logger.debug("Waiting for map metadata")
+        self.logger.info("Waiting for map metadata")
         while self.map_data is None:
             rospy.sleep(0.1)
         self.logger.debug("Recieved map metadata")

@@ -36,15 +36,15 @@ def config2simpletraj(config):
 
 pathlen = 6.0
 # RADS = [2.5, 4.0, 10.0]
-TURN_RADS = [10.0, 15.0, 20.0]
-KINK_RADS = [2.0, 3.0, 5.0]
+TURN_RADS = [10.0, 20.0]
+KINK_RADS = [2.0, 5.0]
 turns = [("left-turn", trajgen.left_turn), ("right-turn", trajgen.right_turn)]
 kinks = [("left-kink", trajgen.left_kink), ("right-kink", trajgen.right_kink)]
 
 if __name__ == "__main__":
     rospy.init_node("controller_runner")
 
-    config = trajgen.straight_line()
+    config = trajgen.straight_line(pathlen)
     traj = config2simpletraj(config)
     with open("trajs/straight.pickle", "wb") as f:
         pickle.dump(traj, f)

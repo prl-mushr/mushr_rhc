@@ -1,7 +1,6 @@
 model_name: "gpr"
-traj_gen_name: "tl"
+trajgen_name: "tl"
 # cost_fn_name: "block_ref_traj_cov"
-# cost_fn_name: "block_ref_traj_means"
 cost_fn_name: "block_ref_traj_complex"
 
 x_gpr_file: "$(find push_data_collector)/out_train_gprs/100-7/x_gpr.pickle"
@@ -17,10 +16,10 @@ t_in_scaler_file: "$(find push_data_collector)/out_train_gprs/100-5/x_scaler.pic
 t_out_scaler_file: "$(find push_data_collector)/out_train_gprs/100-5/y_scaler.pickle"
 
 T: 40
-K: 40
+K: 20
 K_backwards: 0
 
-send_start_pose: true
+send_start_pose: false
 pause_on_rollout: false
 
 debug/flag/viz_rollouts: true
@@ -29,13 +28,12 @@ debug/viz_rollouts/print_stats: false
 velocity_in_state: false
 npos: 6
 
-block_pose_t: "/mushr_mujoco_ros/block_pose"
-inferred_pose_t: "/car_pose"
-car_velocity_t: "/mushr_mujoco_ros/velocimeter"
+block_pose_t: "/block_pose"
+inferred_pose_t: "/pf/inferred_pose"
 
 horizon:
     # distance: 1.5
-    time: .66
+    time: 0.66
 trajgen:
     desired_speed: .5
     min_delta: -0.34
@@ -54,3 +52,6 @@ cost_fn:
     block_dist_w: 1.0
 world_rep:
     epsilon: 0.8
+value:
+    simpleknn:
+        nhalton: 50

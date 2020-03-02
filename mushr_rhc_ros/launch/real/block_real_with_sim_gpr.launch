@@ -6,7 +6,7 @@
     <node pkg="mushr_rhc_ros" type="rhcblock.py" name="rhcontroller" output="screen">
         <env name="RHC_USE_CUDA" value="0" />
 
-        <rosparam file="$(find mushr_rhc_ros)/launch/real/params_block_real_gpr.yaml" subst_value="true" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/real/params_block_real_with_sim_gpr.yaml" subst_value="true" />
 		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
         <rosparam file="$(find mushr_rhc_ros)/launch/real/params.yaml" />
     </node>

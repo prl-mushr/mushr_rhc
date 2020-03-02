@@ -245,7 +245,7 @@ class BlockPush:
                         self.weights_text.insert("1.0", text)
 
             # raw_input("Press enter:")
-        return result
+        return result, False  # the false is backward trajectories
 
     def set_goal(self, goal):
         """

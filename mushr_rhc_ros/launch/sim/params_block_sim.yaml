@@ -1,13 +1,16 @@
 model_name: "mujoco"
 traj_gen_name: "tl"
-cost_fn_name: "block_ref_traj_means"  # _cov
+#cost_fn_name: "block_ref_traj_means"  # _cov
+#cost_fn_name: "block_ref_traj_complex"  # _cov
+cost_fn_name: "block_push"
 
-T: 40
+T: 10
 K: 40
 K_backwards: 0
 
+send_start_pose: true
 pause_on_rollout: false
-debug/flag/viz_rollouts: false
+debug/flag/viz_rollouts: true
 debug/viz_rollouts/print_stats: false
 
 velocity_in_state: false

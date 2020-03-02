@@ -1,3 +1,5 @@
 traj_chosen_topic: '/rhcontroller/traj_chosen'
 
+inferred_pose_t: "/car_pose"
+
 profile: false

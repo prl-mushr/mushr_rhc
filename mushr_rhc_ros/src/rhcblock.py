@@ -43,6 +43,7 @@ class RHCBlock(rhcbase.RHCBase):
         self.events = [self.goal_event, self.map_metadata_event, self.ready_event]
         self.run = True
 
+        self.send_start_pose = self.params.get_bool("send_start_pose", default=True)
         self.do_profile = self.params.get_bool("profile", default=False)
         self.NPOS = self.params.get_int("npos", default=6)
 
@@ -70,9 +71,9 @@ class RHCBlock(rhcbase.RHCBase):
         self.logger.info("Initialized")
 
         while not rospy.is_shutdown() and self.run:
-            if self.state is not None and torch.norm(self.state[:2] - self.state[3:5]) > 0.5:
-                self.expr_failed.publish(Empty())
-                self.goal_event.clear()
+            # if self.state is not None and torch.norm(self.state[:2] - self.state[3:5]) > 0.5:
+            #     self.expr_failed.publish(Empty())
+            #     self.goal_event.clear()
 
             next_traj, rollout = self.run_loop(self.state)
             with self.traj_pub_lock:
@@ -190,6 +191,7 @@ class RHCBlock(rhcbase.RHCBase):
         return []
 
     def cb_trajectory(self, msg):
+        print "TRAJECOTYR"
         traj = torch.empty((len(msg.xs), 3)).type(self.dtype)
         for i in range(len(msg.xs)):
             traj[i, 0] = msg.xs[i]
@@ -201,10 +203,12 @@ class RHCBlock(rhcbase.RHCBase):
             self.goal_event.clear()
 
         self.viz_trajectory(msg)
-        self.traj_pub_block_pose.publish(msg.block_pose)
-        car_init_pose = PoseWithCovarianceStamped()
-        car_init_pose.pose.pose = msg.car_pose
-        self.traj_pub_car_pose.publish(car_init_pose)
+
+        if self.send_start_pose:
+            self.traj_pub_block_pose.publish(msg.block_pose)
+            car_init_pose = PoseWithCovarianceStamped()
+            car_init_pose.pose.pose = msg.car_pose
+            self.traj_pub_car_pose.publish(car_init_pose)
 
         if not self.rhctrl.set_trajectory(traj):
             self.logger.err("Couldn't set reference trajectory")

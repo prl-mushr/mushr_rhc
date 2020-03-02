@@ -302,7 +302,7 @@ class GPR:
         c2r = ~con & (self.p1[:, 0] >= self.b1[:, 0])\
                    & (self.p1[:, 0] <= self.b3[:, 0])
 
-        R = 0.02
+        R = 0.01
 
         if torch.any(c2r):
             confx = self.p1[:, 0] + self.b_cos * R
