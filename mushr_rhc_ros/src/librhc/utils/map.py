@@ -68,8 +68,8 @@ def map2worldnp(mapdata, poses):
 
 def load_permissible_region(params, map):
     """
-        get_map is a function that lazily gets all the mapdata
-            * only use if map data is needed otherwise use cached data
+    get_map is a function that lazily gets all the mapdata
+        * only use if map data is needed otherwise use cached data
     """
     path = cache.get_cache_map_dir(params, map)
     perm_reg_file = os.path.join(path, "perm_region.npy")

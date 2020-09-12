@@ -122,7 +122,10 @@ class RHCNode(rhcbase.RHCBase):
         )
 
         self.rp_ctrls = rospy.Publisher(
-            "/" + car_name + "/" + self.params.get_str(
+            "/"
+            + car_name
+            + "/"
+            + self.params.get_str(
                 "ctrl_topic", default="mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped,

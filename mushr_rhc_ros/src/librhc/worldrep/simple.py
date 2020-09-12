@@ -12,11 +12,11 @@ import rhctensor
 class Simple:
     def __init__(self, params, logger, dtype, map):
         """
-            Inputs:
-                params (obj): parameter getter
-                logger (obj): a logger to write to
-                dtype (obj): data type for tensors
-                map (types.MapData): A map representation
+        Inputs:
+            params (obj): parameter getter
+            logger (obj): a logger to write to
+            dtype (obj): data type for tensors
+            map (types.MapData): A map representation
         """
         self.params = params
         self.logger = logger

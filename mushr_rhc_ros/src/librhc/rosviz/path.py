@@ -38,9 +38,9 @@ def viz_paths_cmap(poses, costs, ns="paths", cmap="plasma", scale=0.03):
 
 def viz_paths(poses, costs, colorfn, ns="paths", scale=0.03):
     """
-        poses should be an array of trajectories to plot in rviz
-        costs should have the same dimensionality as poses.size()[0]
-        colorfn maps a point to an rgb tuple of colors
+    poses should be an array of trajectories to plot in rviz
+    costs should have the same dimensionality as poses.size()[0]
+    colorfn maps a point to an rgb tuple of colors
     """
     assert poses.size()[0] == costs.size()[0]
 
