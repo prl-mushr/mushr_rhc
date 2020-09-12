@@ -108,19 +108,21 @@ class RHCNode(rhcbase.RHCBase):
         rospy.Service("~reset/soft", SrvEmpty, self.srv_reset_soft)
         rospy.Service("~reset/hard", SrvEmpty, self.srv_reset_hard)
 
+        car_name = self.params.get_str("car_name", default="car")
+
         rospy.Subscriber(
             "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
         )
 
         rospy.Subscriber(
-            rospy.get_param("~inferred_pose_t"),
+            "/" + car_name + "/" + rospy.get_param("~inferred_pose_t"),
             PoseStamped,
             self.cb_pose,
             queue_size=10,
         )
 
         self.rp_ctrls = rospy.Publisher(
-            self.params.get_str(
+            "/" + car_name + "/" + self.params.get_str(
                 "ctrl_topic", default="mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped,
