@@ -8,7 +8,7 @@
         <node pkg="mushr_rhc_ros" type="rhcnode.py" name="rhcontroller" output="screen">
             <env name="RHC_USE_CUDA" value="0" />
 
-            <param name="inferred_pose_t" value="pf/inferred_pose" />
+            <param name="inferred_pose_t" value="particle_filter/inferred_pose" />
             <param name="car_name" value="$(arg car_name)" />
 
             <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
