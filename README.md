@@ -4,6 +4,9 @@
 
 This module hosts the RHC controller first implemented on MuSHR stack. It is a model predictive contoller that plans to waypoints from a goal (instead of a reference trajectory). This controller is suitable for cars that don't have a planning module, but want simple MPC.
 
+## Tutorial
+The following [tutorial](https://mushr.io/tutorials/navigation/) goes through installing/running the car.
+
 ## Installing on the car
 **Note:** if you are using the mushr image you can just clone the repo into `~/catkin_ws/src` and it should work out of the box
 
@@ -42,15 +45,15 @@ Topic | Type | Description
 ------|------|------------
 `/rhcontroller/markers`|[visualization_msgs/Marker](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html)|Halton points sampled in the map (for debugging purposes).
 `/rhcontroller/traj_chosen`|[geometry_msgs/PoseArray](http://docs.ros.org/api/geometry_msgs/html/msg/PoseArray.html)|The lowest cost trajectory (for debuggin purposes).
-`/mux/ackermann_cmd_mux/input/navigation`|[ackermann_msgs/AckermannDriveStamped](http://docs.ros.org/api/ackermann_msgs/html/msg/AckermannDriveStamped.html)|The lowest cost control to apply on the car.
+`/car/mux/ackermann_cmd_mux/input/navigation`|[ackermann_msgs/AckermannDriveStamped](http://docs.ros.org/api/ackermann_msgs/html/msg/AckermannDriveStamped.html)|The lowest cost control to apply on the car.
 
 #### Subscribers
 Topic | Type | Description
 ------|------|------------
 `/map_metadata`|[nav_msgs/MapMetaData](http://docs.ros.org/api/nav_msgs/html/msg/MapMetaData.html)|Uses dimension and resolution to create occupancy grid.
 `/move_base_simple/goal`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|Goal to compute path to.
-`/car_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using simulated car pose* Current pose of the car.
-`/pf/inferred_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using particle filter for localization* Current pose of the car.
+`/car/car_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using simulated car pose* Current pose of the car.
+`/car/pf/inferred_pose`|[geometry_msgs/PoseStamped](http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html)|*When using particle filter for localization* Current pose of the car.
 
 #### Services
 Topic | Type | Description
