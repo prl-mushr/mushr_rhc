@@ -1,9 +1,12 @@
 <launch>
     <arg name="tg" default="dispersion" />
 	<arg name="car_name" default="car" />
+	<arg name="map_server" default="1" />
 
-    <include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
-
+    <group if="$(arg map_server)">
+	<include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
+    </group>
+	
     <group ns="$(arg car_name)">
         <node pkg="mushr_rhc_ros" type="rhcnode.py" name="rhcontroller" output="screen">
             <env name="RHC_USE_CUDA" value="0" />
