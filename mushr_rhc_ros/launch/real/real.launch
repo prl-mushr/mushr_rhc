@@ -1,7 +1,7 @@
 <launch>
     <arg name="tg" default="dispersion" />
 	<arg name="car_name" default="car" />
-	<arg name="map_server" default="1" />
+	<arg name="map_server" default="0" />
 
     <group if="$(arg map_server)">
 	<include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
