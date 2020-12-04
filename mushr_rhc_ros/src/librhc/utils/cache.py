@@ -25,4 +25,4 @@ def get_cache_dir(params, path):
 
 
 def get_cache_map_dir(params, map):
-    return get_cache_dir(params, map.name)
+    return get_cache_dir(params, 'mapres_%dh_%dw'%(map.height,map.width))
