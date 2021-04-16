@@ -12,7 +12,6 @@ import librhc.cost as cost
 import librhc.model as model
 import librhc.trajgen as trajgen
 import librhc.types as types
-import librhc.value as value
 import librhc.worldrep as worldrep
 import utils
 
@@ -21,8 +20,6 @@ motion_models = {"kinematic": model.Kinematics}
 trajgens = {"tl": trajgen.TL, "dispersion": trajgen.Dispersion}
 
 cost_functions = {"waypoints": cost.Waypoints}
-
-value_functions = {"simpleknn": value.SimpleKNN}
 
 world_reps = {"simple": worldrep.Simple}
 
@@ -75,16 +72,8 @@ class RHCBase(object):
 
         wr = world_reps[wrname](self.params, self.logger, self.dtype, self.map_data)
 
-        vfname = self.params.get_str("value_fn_name", default="simpleknn")
-        if vfname not in value_functions:
-            self.logger.fatal("value_fn '{}' is not valid".format(vfname))
-
-        vf = value_functions[vfname](
-            self.params, self.logger, self.dtype, self.map_data
-        )
-
         return cost_functions[cfname](
-            self.params, self.logger, self.dtype, self.map_data, wr, vf
+            self.params, self.logger, self.dtype, self.map_data, wr
         )
 
     def cb_map_metadata(self, msg):

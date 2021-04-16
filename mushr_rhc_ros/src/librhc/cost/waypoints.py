@@ -7,14 +7,14 @@ import torch
 class Waypoints:
     NPOS = 3  # x, y, theta
 
-    def __init__(self, params, logger, dtype, map, world_rep, value_fn):
+    def __init__(self, params, logger, dtype, map, world_rep):
         self.params = params
         self.logger = logger
         self.dtype = dtype
         self.map = map
 
         self.world_rep = world_rep
-        self.value_fn = value_fn
+        self.goal = None
 
         self.viz_rollouts = self.params.get_bool("debug/flag/viz_rollouts", False)
         self.n_viz = self.params.get_int("debug/viz_rollouts/n", -1)
@@ -27,7 +27,6 @@ class Waypoints:
         self.K = self.params.get_int("K", default=62)
         self.dist_w = self.params.get_float("cost_fn/dist_w", default=1.0)
         self.obs_dist_w = self.params.get_float("cost_fn/obs_dist_w", default=5.0)
-        self.cost2go_w = self.params.get_float("cost_fn/cost2go_w", default=1.0)
         self.smoothing_discount_rate = self.params.get_float(
             "cost_fn/smoothing_discount_rate", default=0.04
         )
@@ -55,9 +54,6 @@ class Waypoints:
 
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
-        # use terminal distance (K, tensor)
-        cost2go = self.value_fn.get_value(poses[:, self.T - 1, :]).mul(self.cost2go_w)
-
         # get all collisions (K, T, tensor)
         collisions = self.world_rep.check_collision_in_map(all_poses).view(
             self.K, self.T
@@ -78,9 +74,8 @@ class Waypoints:
             .sum(dim=1)
         )
 
-        result = cost2go.add(collision_cost).add(obs_dist_cost).add(smoothness)
+        result = collision_cost.add(obs_dist_cost).add(smoothness)
 
-        # filter out all colliding trajectories
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000
 
@@ -102,7 +97,6 @@ class Waypoints:
                 print_n(
                     result[non_colliding].squeeze(), p_non_colliding, ns="final_result"
                 )
-                print_n(cost2go[non_colliding].squeeze(), p_non_colliding, ns="cost2go")
                 print_n(
                     collision_cost[non_colliding].squeeze(),
                     p_non_colliding,
@@ -126,8 +120,6 @@ class Waypoints:
 
                     print("Final Result")
                     print(result[idx])
-                    print("Cost 2 Go")
-                    print(cost2go[idx])
                     print("Collision Cost")
                     print(collision_cost[idx])
                     print("Obstacle Distance Cost")
@@ -136,3 +128,7 @@ class Waypoints:
                     print(smoothness[idx])
 
         return result
+    
+    def set_goal(self, goal):
+        self.goal = goal
+        return True
