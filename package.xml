@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>mushr_rhc_ros</name>
+  <name>mushr_rhc</name>
   <version>1.0.0</version>
   <description>Receding Horizon Controller base package</description>
 
-  <maintainer email="rockettm@cs.washington.edu">Matthew Rockett</maintainer>
+  <!-- Original Creators Matthew Rockettt & Johan Michalove -->
+  <maintainer email="schmttle@cs.washington.edu">Matt Schmittle</maintainer>
 
   <license>BSD</license>
 
