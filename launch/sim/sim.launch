@@ -1,22 +1,17 @@
 <launch>
     <arg name="tg" default="dispersion" />
-	<arg name="map_server" default="1" />
 	<arg name="car_name" default="car" />
 
-    <group if="$(arg map_server)">
-	<include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
-    </group>
-
     <group ns="$(arg car_name)">
-        <node pkg="mushr_rhc_ros" type="rhcnode.py" name="rhcontroller" output="screen">
+        <node pkg="mushr_rhc" type="rhcnode.py" name="rhcontroller" output="screen">
             <env name="RHC_USE_CUDA" value="0" />
 
             <param name="inferred_pose_t" value="car_pose" />
             <param name="car_name" value="$(arg car_name)" />
 
-            <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
-            <rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
-            <rosparam file="$(find mushr_rhc_ros)/launch/sim/params.yaml" />
+            <rosparam file="$(find mushr_rhc)/config/trajgen/$(arg tg).yaml" />
+            <rosparam file="$(find mushr_rhc)/config/config.yaml" />
+            <rosparam file="$(find mushr_rhc)/config/sim.yaml" />
         </node>
     </group>
 </launch>
