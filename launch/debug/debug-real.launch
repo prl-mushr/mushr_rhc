@@ -9,8 +9,8 @@
 
 		<param name="inferred_pose_t" value="/pf/inferred_pose" />
 
-        <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
-        <rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
-        <rosparam file="$(find mushr_rhc_ros)/launch/debug/params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/config/trajgen/$(arg tg).yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/config/config.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/config/debug.yaml" />
     </node>
 </launch>
