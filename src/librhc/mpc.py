@@ -89,7 +89,7 @@ class MPC:
 
         with self.goal_lock:
             self.goal = goal
-            return self.cost.value_fn.set_goal(goal)
+            return self.cost.set_goal(goal)
 
     def dist_to_goal(self, state):
         with self.goal_lock:
