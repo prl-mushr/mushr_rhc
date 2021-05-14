@@ -2,6 +2,8 @@
     <arg name="tg" default="dispersion" />
 	<arg name="car_name" default="car" />
 	<arg name="map_server" default="0" />
+    <arg name="path_topic" default="/path" />
+    <arg name="car_pose" default="/car_pose" />
 
     <group if="$(arg map_server)">
 	<include file="$(find mushr_rhc_ros)/launch/map_server.launch" />
@@ -13,6 +15,8 @@
 
             <param name="inferred_pose_t" value="particle_filter/inferred_pose" />
             <param name="car_name" value="$(arg car_name)" />
+            <param name="path_topic" value="$(arg path_topic)" />
+            <param name="car_pose" value="/$(arg car_name)$(arg car_pose)" />
 
             <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
             <rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
