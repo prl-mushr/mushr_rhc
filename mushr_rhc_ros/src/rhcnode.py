@@ -20,6 +20,10 @@ import parameters
 import rhcbase
 import rhctensor
 import utils
+import tf
+import numpy as np
+from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path
 
 
 class RHCNode(rhcbase.RHCBase):
@@ -31,6 +35,9 @@ class RHCNode(rhcbase.RHCBase):
         self.reset_lock = threading.Lock()
         self.inferred_pose_lock = threading.Lock()
         self._inferred_pose = None
+
+        self.car_pose = None
+        self.path = None
 
         self.cur_rollout = self.cur_rollout_ip = None
         self.traj_pub_lock = threading.Lock()
@@ -68,7 +75,7 @@ class RHCNode(rhcbase.RHCBase):
 
         while not rospy.is_shutdown() and self.run:
             ip = self.inferred_pose()
-            next_traj, rollout = self.run_loop(ip)
+            next_traj, rollout = self.run_loop(ip, self.path, self.car_pose)
             with self.traj_pub_lock:
                 if rollout is not None:
                     self.cur_rollout = rollout.clone()
@@ -85,9 +92,9 @@ class RHCNode(rhcbase.RHCBase):
 
         self.end_profile()
 
-    def run_loop(self, ip):
+    def run_loop(self, ip, path, car_pose):
         self.goal_event.wait()
-        if rospy.is_shutdown() or ip is None:
+        if rospy.is_shutdown() or ip is None or path is None or car_pose is None:
             return None, None
         with self.reset_lock:
             # If a reset is initialed after the goal_event was set, the goal
@@ -95,7 +102,7 @@ class RHCNode(rhcbase.RHCBase):
             if not self.goal_event.is_set():
                 return None, None
             if ip is not None:
-                return self.rhctrl.step(ip)
+                return self.rhctrl.step(ip, path, car_pose)
             self.logger.err("Shouldn't get here: run_loop")
 
     def shutdown(self, signum, frame):
@@ -132,6 +139,17 @@ class RHCNode(rhcbase.RHCBase):
             queue_size=2,
         )
 
+        self.path_sub = rospy.Subscriber(
+            rospy.get_param("~path_topic"), Path, self.path_cb, queue_size=1
+        )
+
+        self.start_sub = rospy.Subscriber(
+            rospy.get_param("~car_pose"),
+            PoseStamped,
+            self.car_pose_cb,
+            queue_size=1,
+        )
+
         traj_chosen_t = self.params.get_str("traj_chosen_topic", default="~traj_chosen")
         self.traj_chosen_pub = rospy.Publisher(traj_chosen_t, Marker, queue_size=10)
 
@@ -164,6 +182,7 @@ class RHCNode(rhcbase.RHCBase):
         return []
 
     def cb_goal(self, msg):
+        self.path = None
         goal = self.dtype(utils.rospose_to_posetup(msg.pose))
         self.ready_event.wait()
         if not self.rhctrl.set_goal(goal):
@@ -194,6 +213,40 @@ class RHCNode(rhcbase.RHCBase):
             )
             m.scale.x = 0.05
             self.traj_chosen_pub.publish(m)
+
+    def path_cb(self, msg):
+            path = []
+            for pose_stamped in msg.poses:
+                point = pose_stamped.pose.position
+                orientation = pose_stamped.pose.orientation
+                theta = tf.transformations.euler_from_quaternion(
+                    [
+                        orientation.x,
+                        orientation.y,
+                        orientation.z,
+                        orientation.w,
+                    ]
+                )
+                path.append(np.array([point.x, point.y, theta[2]]))
+            self.path = np.array(path)
+
+    def car_pose_cb(self, msg):
+        """
+        Record the new car position as the start.
+
+        Attributes:
+            msg (geometry_msgs/PoseStamped): goal position
+
+        """
+        theta = tf.transformations.euler_from_quaternion(
+            [
+                msg.pose.orientation.x,
+                msg.pose.orientation.y,
+                msg.pose.orientation.z,
+                msg.pose.orientation.w,
+            ]
+        )
+        self.car_pose = [msg.pose.position.x, msg.pose.position.y, theta[2]]
 
     def publish_traj(self, traj, rollout):
         assert traj.size() == (self.T, 2)
