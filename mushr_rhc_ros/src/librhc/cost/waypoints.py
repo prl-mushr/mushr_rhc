@@ -83,7 +83,7 @@ class Waypoints:
         cross_track_error = None
 
         # calculate lookahead
-        distance_lookahead = 2
+        distance_lookahead = 2.122
 
         # calculate closest index to car position
         diff = np.sqrt(((path[:,0] - car_pose[0]) ** 2) + ((path[:,1] - car_pose[1]) ** 2))
@@ -115,19 +115,30 @@ class Waypoints:
         marker.scale.y = .2
         marker.scale.z = .2
         marker.header.frame_id = "map"
+        marker.frame_locked = True
 
         self.lookahead_publisher.publish(marker)
 
-        # ect = -(x - x_ref)sin(theta_ref) + (y - y_ref)cos(theta_ref)
-        # TODO: check axis
-        cross_track_error = np.abs(-(poses[:, :, 0] - lookahead[0]) * np.sin(lookahead[2]) + (poses[:, :, 1] - lookahead[1]) * np.cos(lookahead[2]))
+        x_ref, y_ref, theta_ref = lookahead
+
+        cross_track_error = np.abs(-(poses[:, :, 0] - x_ref) * np.sin(theta_ref) + (poses[:, :, 1] - y_ref) * np.cos(theta_ref))
+        # take the sum of error along the trajs
         cross_track_error = torch.sum(cross_track_error, dim=1)
+
+        along_track_error = np.abs((poses[:, :, 0] - x_ref) * np.cos(theta_ref) + (poses[:, :, 1] - y_ref) * np.sin(theta_ref))
+        # take the sum of error along the trajs
+        along_track_error = torch.sum(along_track_error, dim=1)
+
+        heading_error = np.abs((poses[:, :, 2] - theta_ref))
+        heading_error = torch.sum(heading_error, dim=1)
 
         # multiply weights
         cross_track_error *= 1000
+        along_track_error *= 1000
+        heading_error *= 500
 
-        result = collision_cost.add(obs_dist_cost).add(smoothness).add(cross_track_error)
-        # result = cross_track_error
+        # result = collision_cost.add(obs_dist_cost).add(smoothness).add(cross_track_error)
+        result = cross_track_error.add(along_track_error).add(heading_error)
 
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000
