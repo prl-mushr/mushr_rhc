@@ -102,7 +102,7 @@ class Waypoints:
         marker = Marker()
         marker.pose.position.x = lookahead[0]
         marker.pose.position.y = lookahead[1]
-        marker.pose.position.z = lookahead[2]
+        marker.pose.position.z = 0
         marker.pose.orientation.x = quaternion[0]
         marker.pose.orientation.y = quaternion[1]
         marker.pose.orientation.z = quaternion[2]
@@ -135,7 +135,7 @@ class Waypoints:
         # multiply weights
         cross_track_error *= 1000
         along_track_error *= 1000
-        heading_error *= 500
+        heading_error *= 0
 
         # result = collision_cost.add(obs_dist_cost).add(smoothness).add(cross_track_error)
         result = cross_track_error.add(along_track_error).add(heading_error)

@@ -2,7 +2,9 @@
 # License: BSD 3-Clause. See LICENSE.md file in root directory.
 
 import os
+import rospy
 from itertools import product
+from ackermann_msgs.msg import AckermannDriveStamped
 
 import torch
 from scipy.spatial.distance import directed_hausdorff
@@ -21,6 +23,12 @@ class Dispersion:
         self.params = params
         self.dtype = dtype
         self.motion_model = motion_model
+
+        self.rp_ctrls = rospy.Publisher(
+            "/car/all_traj",
+            AckermannDriveStamped,
+            queue_size=2,
+        )
 
         self.reset()
 
@@ -103,8 +111,14 @@ class Dispersion:
                 ms_ctrls[1:, :, 1] = ms_deltas
                 ms_ctrls[0, :, 1] = 0
 
+            neg_ms_ctrls = ms_ctrls[:]
+            neg_ms_ctrls[:, :, 0] = -1 * neg_ms_ctrls[:, :, 0]
             ms_poses = self._rollout_ms(ms_ctrls)
-            self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            neg_ms_poses = self._rollout_ms(neg_ms_ctrls)
+            pos_ctrls = self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            neg_ctrls = self._prune_mother_set(zero_idx, neg_ms_ctrls, neg_ms_poses)
+            self.ctrls = torch.cat((pos_ctrls, neg_ctrls))
+            print("trajs generated")
             torch.save(self.ctrls, dispersion_path)
 
     def _rollout_ms(self, ms_ctrls):
@@ -114,7 +128,8 @@ class Dispersion:
         ms_poses = self.dtype(len(ms_ctrls), self.T, self.NPOS).zero_()
         for t in range(1, self.T):
             cur_x = ms_poses[:, t - 1]
-            cur_u = ms_ctrls[:, t - 1]
+            cur_u = ms_ctrls[:, t - 1, :]
+            self.publish_traj(cur_u)
             ms_poses[:, t] = self.motion_model.apply(cur_x, cur_u)
         self.motion_model.set_k(k)
         return ms_poses
@@ -126,7 +141,9 @@ class Dispersion:
         def hausdorff(a, b):
             return max(directed_hausdorff(a, b)[0], directed_hausdorff(b, a)[0])
 
-        for _ in range(self.K - 1):
+        prune_size = self.K / 2
+
+        for _ in range(prune_size - 1):
             max_i, max_dist = 0, 0
             for rollout in range(len(ms_ctrls)):
                 if rollout in visited:
@@ -145,9 +162,10 @@ class Dispersion:
 
             visited[max_i] = ms_poses[max_i]
 
-        assert len(visited) == self.K
-        self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
-        self.ctrls.copy_(ms_ctrls[visited.keys()])
+        assert len(visited) == prune_size
+        ctrls = self.dtype(self.K / 2, self.T, self.NCTRL)
+        ctrls.copy_(ms_ctrls[visited.keys()])
+        return ctrls
 
     def get_control_trajectories(self, velocity):
         """
@@ -171,3 +189,14 @@ class Dispersion:
         assert costs.size() == (self.K,)
         _, idx = torch.min(costs, 0)
         return controls[idx], idx
+
+
+    def publish_traj(self, ctrl):
+        ctrlmsg = AckermannDriveStamped()
+        ctrlmsg.header.stamp = rospy.Time.now()
+        ctrlmsg.drive.speed = ctrl[0]
+        ctrlmsg.drive.steering_angle = ctrl[1]
+        self.rp_ctrls.publish(ctrlmsg)
+
+
+    
