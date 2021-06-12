@@ -13,7 +13,7 @@ from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import Point, PoseStamped
 from std_msgs.msg import ColorRGBA, Empty
 from std_srvs.srv import Empty as SrvEmpty
-from visualization_msgs.msg import Marker
+from visualization_msgs.msg import Marker, MarkerArray
 
 import logger
 import parameters
@@ -76,6 +76,9 @@ class RHCNode(rhcbase.RHCBase):
         while not rospy.is_shutdown() and self.run:
             ip = self.inferred_pose()
             next_traj, rollout = self.run_loop(ip, self.path, self.car_pose)
+            if self._rollouts_pub.get_num_connections() > 0:
+                markers = self.rollouts_to_markers(self.rhctrl.get_all_rollouts())
+                self._rollouts_pub.publish(markers) 
             with self.traj_pub_lock:
                 if rollout is not None:
                     self.cur_rollout = rollout.clone()
@@ -102,7 +105,10 @@ class RHCNode(rhcbase.RHCBase):
             if not self.goal_event.is_set():
                 return None, None
             if ip is not None:
-                return self.rhctrl.step(ip, path, car_pose)
+                before = rospy.get_time()
+                result = self.rhctrl.step(ip, path, car_pose)
+                total = rospy.get_time() - before
+                return result
             self.logger.err("Shouldn't get here: run_loop")
 
     def shutdown(self, signum, frame):
@@ -127,6 +133,8 @@ class RHCNode(rhcbase.RHCBase):
             self.cb_pose,
             queue_size=10,
         )
+        
+        self._rollouts_pub = rospy.Publisher("~rollouts", MarkerArray, queue_size=1)
 
         self.rp_ctrls = rospy.Publisher(
             "/"
@@ -258,6 +266,26 @@ class RHCNode(rhcbase.RHCBase):
         ctrlmsg.drive.speed = ctrl[0]
         ctrlmsg.drive.steering_angle = ctrl[1]
         self.rp_ctrls.publish(ctrlmsg)
+
+    def rollouts_to_markers(self, rollouts, ns="paths", scale=0.01):
+        markers = MarkerArray()
+        for i, traj in enumerate(rollouts):
+            m = Marker()
+            m.header.frame_id = "map"
+            m.header.stamp = rospy.Time.now()
+            m.ns = ns + str(i)
+            m.id = i
+            m.type = m.LINE_STRIP
+            m.action = m.ADD
+            m.pose.orientation.w = 1.0
+            m.scale.x = scale
+            m.color.r, m.color.g, m.color.b, m.color.a = 0, 0, 0, 1
+            for t in traj:
+                p = Point()
+                p.x, p.y = t[0], t[1]
+                m.points.append(p)
+            markers.markers.append(m)
+        return markers
 
     def set_inferred_pose(self, ip):
         with self.inferred_pose_lock:

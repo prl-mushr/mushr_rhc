@@ -51,6 +51,8 @@ class Waypoints:
         Args:
         poses [(K, T, 3) tensor] -- Rollout of T positions
         goal  [(3,) tensor]: Goal position in "world" mode
+        path Path: Current path to the goal with orientation and positions
+        car_pose PoseStamped: Current car position
 
         Returns:
         [(K,) tensor] costs for each K paths
@@ -66,11 +68,6 @@ class Waypoints:
         )
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
 
-        obstacle_distances = self.world_rep.distances(all_poses).view(self.K, self.T)
-        obstacle_distances[:].mul_(self.obs_dist_cooloff)
-
-        obs_dist_cost = obstacle_distances[:].sum(dim=1).mul(self.obs_dist_w)
-
         # reward smoothness by taking the integral over the rate of change in poses,
         # with time-based discounting factor
         smoothness = (
@@ -80,10 +77,8 @@ class Waypoints:
             .sum(dim=1)
         )
 
-        cross_track_error = None
-
         # calculate lookahead
-        distance_lookahead = 2.122
+        distance_lookahead = 2.2
 
         # calculate closest index to car position
         diff = np.sqrt(((path[:,0] - car_pose[0]) ** 2) + ((path[:,1] - car_pose[1]) ** 2))
@@ -129,67 +124,17 @@ class Waypoints:
         # take the sum of error along the trajs
         along_track_error = torch.sum(along_track_error, dim=1)
 
-        heading_error = np.abs((poses[:, :, 2] - theta_ref))
-        heading_error = torch.sum(heading_error, dim=1)
+        heading_error = np.abs((poses[:, -1, 2] - theta_ref))
 
         # multiply weights
-        cross_track_error *= 1000
-        along_track_error *= 1000
-        heading_error *= 0
-
+        cross_track_error *= 1200
+        along_track_error *= 1200
+        heading_error *= 100
         # result = collision_cost.add(obs_dist_cost).add(smoothness).add(cross_track_error)
         result = cross_track_error.add(along_track_error).add(heading_error)
 
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000
-
-        if self.viz_rollouts:
-            import librhc.rosviz as rosviz
-
-            non_colliding = (collision_cost == 0).nonzero()
-
-            if non_colliding.size()[0] > 0:
-
-                def print_n(c, poses, ns, cmap="coolwarm"):
-                    _, all_idx = torch.sort(c)
-
-                    n = min(self.n_viz, len(c))
-                    idx = all_idx[:n] if n > -1 else all_idx
-                    rosviz.viz_paths_cmap(poses[idx], c[idx], ns=ns, cmap=cmap)
-
-                p_non_colliding = poses[non_colliding].squeeze()
-                print_n(
-                    result[non_colliding].squeeze(), p_non_colliding, ns="final_result"
-                )
-                print_n(
-                    collision_cost[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="collision_cost",
-                )
-                print_n(
-                    obs_dist_cost[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="obstacle_dist_cost",
-                )
-                print_n(
-                    smoothness[non_colliding].squeeze(),
-                    p_non_colliding,
-                    ns="smoothness",
-                )
-
-                if self.print_stats:
-                    _, all_sorted_idx = torch.sort(result[non_colliding].squeeze())
-                    n = min(self.n_viz, len(all_sorted_idx))
-                    idx = all_sorted_idx[:n] if n > -1 else all_sorted_idx
-
-                    print("Final Result")
-                    print(result[idx])
-                    print("Collision Cost")
-                    print(collision_cost[idx])
-                    print("Obstacle Distance Cost")
-                    print(obs_dist_cost[idx])
-                    print("Smoothness")
-                    print(smoothness[idx])
 
         return result
     

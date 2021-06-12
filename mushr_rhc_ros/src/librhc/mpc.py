@@ -110,3 +110,6 @@ class MPC:
                 return False
         dist = self.goal[:2].sub(state[:2]).abs_()
         return dist.lt(self.goal_threshold).min() == 1
+
+    def get_all_rollouts(self):
+        return self.rollouts
