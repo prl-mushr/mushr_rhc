@@ -8,8 +8,8 @@
 
 		<param name="inferred_pose_t" value="car_pose" />
 
-        <rosparam file="$(find mushr_rhc_ros)/launch/params/trajgen/$(arg tg).yaml" />
-		<rosparam file="$(find mushr_rhc_ros)/launch/params/all_params.yaml" />
-        <rosparam file="$(find mushr_rhc_ros)/launch/debug/params.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/config/trajgen/$(arg tg).yaml" />
+		<rosparam file="$(find mushr_rhc_ros)/launch/config/config.yaml" />
+        <rosparam file="$(find mushr_rhc_ros)/launch/config/debug.yaml" />
     </node>
 </launch>
