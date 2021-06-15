@@ -2,10 +2,9 @@
 # License: BSD 3-Clause. See LICENSE.md file in root directory.
 
 import torch
-import rospy
-import tf
 import numpy as np
-from visualization_msgs.msg import Marker
+import yaml
+
 
 class Waypoints:
     NPOS = 3  # x, y, theta
@@ -17,10 +16,6 @@ class Waypoints:
         self.map = map
 
         self.world_rep = world_rep
-
-        self.lookahead_publisher = rospy.Publisher(
-            "path_points", Marker, queue_size=1
-        )
 
         self.viz_rollouts = self.params.get_bool("debug/flag/viz_rollouts", False)
         self.n_viz = self.params.get_int("debug/viz_rollouts/n", -1)
@@ -51,8 +46,8 @@ class Waypoints:
         Args:
         poses [(K, T, 3) tensor] -- Rollout of T positions
         goal  [(3,) tensor]: Goal position in "world" mode
-        path Path: Current path to the goal with orientation and positions
-        car_pose PoseStamped: Current car position
+        path nav_msgs.Path: Current path to the goal with orientation and positions
+        car_pose geometry_msgs.PoseStamped: Current car position
 
         Returns:
         [(K,) tensor] costs for each K paths
@@ -68,76 +63,55 @@ class Waypoints:
         )
         collision_cost = collisions.sum(dim=1).mul(self.bounds_cost)
 
-        # reward smoothness by taking the integral over the rate of change in poses,
-        # with time-based discounting factor
-        smoothness = (
-            ((poses[:, 1:, 2] - poses[:, : self.T - 1, 2]))
-            .abs()
-            .mul(self.discount)
-            .sum(dim=1)
-        )
-
         # calculate lookahead
         distance_lookahead = 2.2
 
         # calculate closest index to car position
-        diff = np.sqrt(((path[:,0] - car_pose[0]) ** 2) + ((path[:,1] - car_pose[1]) ** 2))
+        diff = np.sqrt(
+            ((path[:, 0] - car_pose[0]) ** 2) + ((path[:, 1] - car_pose[1]) ** 2)
+        )
         index = np.argmin(diff)
 
         # iterate to closest lookahead to distance
         while index < len(path) - 1 and diff[index] < distance_lookahead:
             index += 1
 
-        if abs(diff[index - 1] - distance_lookahead) < abs(diff[index] - distance_lookahead):
+        if abs(diff[index - 1] - distance_lookahead) < abs(
+            diff[index] - distance_lookahead
+        ):
             index -= 1
 
-        lookahead = path[index]
-        quaternion = tf.transformations.quaternion_from_euler(0, 0, lookahead[2])
+        x_ref, y_ref, theta_ref = path[index]
 
-        marker = Marker()
-        marker.pose.position.x = lookahead[0]
-        marker.pose.position.y = lookahead[1]
-        marker.pose.position.z = 0
-        marker.pose.orientation.x = quaternion[0]
-        marker.pose.orientation.y = quaternion[1]
-        marker.pose.orientation.z = quaternion[2]
-        marker.pose.orientation.w = quaternion[3]
-        marker.color.r = 1.0
-        marker.color.g = 1.0
-        marker.color.b = 0.0
-        marker.color.a = 1.0
-        marker.scale.x = .2
-        marker.scale.y = .2
-        marker.scale.z = .2
-        marker.header.frame_id = "map"
-        marker.frame_locked = True
-
-        self.lookahead_publisher.publish(marker)
-
-        x_ref, y_ref, theta_ref = lookahead
-
-        cross_track_error = np.abs(-(poses[:, :, 0] - x_ref) * np.sin(theta_ref) + (poses[:, :, 1] - y_ref) * np.cos(theta_ref))
+        cross_track_error = np.abs(
+            -(poses[:, :, 0] - x_ref) * np.sin(theta_ref)
+            + (poses[:, :, 1] - y_ref) * np.cos(theta_ref)
+        )
         # take the sum of error along the trajs
         cross_track_error = torch.sum(cross_track_error, dim=1)
 
-        along_track_error = np.abs((poses[:, :, 0] - x_ref) * np.cos(theta_ref) + (poses[:, :, 1] - y_ref) * np.sin(theta_ref))
+        along_track_error = np.abs(
+            (poses[:, :, 0] - x_ref) * np.cos(theta_ref)
+            + (poses[:, :, 1] - y_ref) * np.sin(theta_ref)
+        )
         # take the sum of error along the trajs
         along_track_error = torch.sum(along_track_error, dim=1)
 
+        # take the heading error from last pos in trajs
         heading_error = np.abs((poses[:, -1, 2] - theta_ref))
 
         # multiply weights
-        cross_track_error *= 1200
-        along_track_error *= 1200
-        heading_error *= 100
-        # result = collision_cost.add(obs_dist_cost).add(smoothness).add(cross_track_error)
+        cross_track_error *= self.params.get_int("cte_weight", default=1200)
+        along_track_error *= self.params.get_int("ate_weight", default=1200)
+        heading_error *= self.params.get_int("he_weight", default=100)
+
         result = cross_track_error.add(along_track_error).add(heading_error)
 
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000
 
         return result
-    
+
     def set_goal(self, goal):
         self.goal = goal
         return True
