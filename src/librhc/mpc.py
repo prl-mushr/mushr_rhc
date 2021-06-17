@@ -47,10 +47,13 @@ class MPC:
             self.kinematics.reset()
             self.cost.reset()
 
-    def step(self, state):
+    def step(self, state, path, car_pose):
         """
         Args:
         state [(3,) tensor] -- Current position in "world" coordinates
+        TODO
+        path --
+        car_pose --
         """
         assert state.size() == (3,)
 
@@ -76,7 +79,7 @@ class MPC:
             cur_x = self.rollouts[:, t - 1]
             self.rollouts[:, t] = self.kinematics.apply(cur_x, trajs[:, t - 1])
 
-        costs = self.cost.apply(self.rollouts, g)
+        costs = self.cost.apply(self.rollouts, g, path, car_pose)
         result, idx = self.trajgen.generate_control(trajs, costs)
         return result, self.rollouts[idx]
 
@@ -107,3 +110,6 @@ class MPC:
                 return False
         dist = self.goal[:2].sub(state[:2]).abs_()
         return dist.lt(self.goal_threshold).min() == 1
+
+    def get_all_rollouts(self):
+        return self.rollouts

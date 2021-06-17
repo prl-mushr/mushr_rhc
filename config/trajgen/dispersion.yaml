@@ -1,5 +1,5 @@
 T: 21
-K: 301
+K: 162
 trajgen_name: 'dispersion'
 horizon:
     distance: 3.5
@@ -17,3 +17,7 @@ cost_fn:
     bounds_cost: 1000.0
 world_rep:
     epsilon: 0.6
+control: 
+    cte_weight: 1200
+    ate_weight: 1200
+    he_weight: 100

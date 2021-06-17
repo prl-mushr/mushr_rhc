@@ -48,6 +48,9 @@ class Kinematics:
         Return:
         [(K, NCTRL) tensor] The next position given the current control
         """
+        # print(str(ctrl.size()) + " is actual ctrl size")
+        # print(str((self.K, self.NCTRL)) + " is expected ctrl size")
+
         assert pose.size() == (self.K, self.NPOS)
         assert ctrl.size() == (self.K, self.NCTRL)
 

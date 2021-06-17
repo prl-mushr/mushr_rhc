@@ -2,9 +2,12 @@
 # License: BSD 3-Clause. See LICENSE.md file in root directory.
 
 import os
+import rospy
 from itertools import product
+from ackermann_msgs.msg import AckermannDriveStamped
 
 import torch
+import numpy as np
 from scipy.spatial.distance import directed_hausdorff
 
 import librhc.utils as utils
@@ -21,6 +24,12 @@ class Dispersion:
         self.params = params
         self.dtype = dtype
         self.motion_model = motion_model
+
+        self.rp_ctrls = rospy.Publisher(
+            "/car/all_traj",
+            AckermannDriveStamped,
+            queue_size=2,
+        )
 
         self.reset()
 
@@ -103,8 +112,13 @@ class Dispersion:
                 ms_ctrls[1:, :, 1] = ms_deltas
                 ms_ctrls[0, :, 1] = 0
 
+            neg_ms_ctrls = torch.clone(ms_ctrls)
+            neg_ms_ctrls[:, :, 0] = -1 * neg_ms_ctrls[:, :, 0]
             ms_poses = self._rollout_ms(ms_ctrls)
-            self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            neg_ms_poses = self._rollout_ms(neg_ms_ctrls)
+            pos_ctrls = self._prune_mother_set(zero_idx, ms_ctrls, ms_poses)
+            neg_ctrls = self._prune_mother_set(zero_idx, neg_ms_ctrls, neg_ms_poses)
+            self.ctrls = torch.cat((neg_ctrls,pos_ctrls))
             torch.save(self.ctrls, dispersion_path)
 
     def _rollout_ms(self, ms_ctrls):
@@ -114,7 +128,7 @@ class Dispersion:
         ms_poses = self.dtype(len(ms_ctrls), self.T, self.NPOS).zero_()
         for t in range(1, self.T):
             cur_x = ms_poses[:, t - 1]
-            cur_u = ms_ctrls[:, t - 1]
+            cur_u = ms_ctrls[:, t - 1, :]
             ms_poses[:, t] = self.motion_model.apply(cur_x, cur_u)
         self.motion_model.set_k(k)
         return ms_poses
@@ -126,7 +140,9 @@ class Dispersion:
         def hausdorff(a, b):
             return max(directed_hausdorff(a, b)[0], directed_hausdorff(b, a)[0])
 
-        for _ in range(self.K - 1):
+        prune_size = self.K / 2
+
+        for _ in range(prune_size - 1):
             max_i, max_dist = 0, 0
             for rollout in range(len(ms_ctrls)):
                 if rollout in visited:
@@ -145,9 +161,9 @@ class Dispersion:
 
             visited[max_i] = ms_poses[max_i]
 
-        assert len(visited) == self.K
-        self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
-        self.ctrls.copy_(ms_ctrls[visited.keys()])
+        assert len(visited) == prune_size
+        ctrls = self.dtype(self.K / 2, self.T, self.NCTRL)
+        return ctrls.copy_(ms_ctrls[visited.keys()])
 
     def get_control_trajectories(self, velocity):
         """
@@ -155,7 +171,8 @@ class Dispersion:
         [(K, T, NCTRL) tensor] -- of controls
             ([:, :, 0] is the desired speed, [:, :, 1] is the control delta)
         """
-        self.ctrls[:, :, 0] = velocity
+        # scale the velocity but preserve sign
+        self.ctrls[:, :, 0] = velocity * np.sign(self.ctrls[:, :, 0])
         return self.ctrls
 
     def generate_control(self, controls, costs):
