@@ -4,7 +4,7 @@
 import torch
 
 
-class Waypoints:
+class SingleGoal:
     NPOS = 3  # x, y, theta
 
     def __init__(self, params, logger, dtype, map, world_rep):
@@ -54,6 +54,11 @@ class Waypoints:
 
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
+        # Distance of end-point in traj to goal
+        distance_cost = np.sqrt(
+                ((goal[0] - poses[:, self.T, 0]) ** 2) + ((goal[1] - poses[:, self.T, 1]) ** 2)
+        )
+
         # get all collisions (K, T, tensor)
         collisions = self.world_rep.check_collision_in_map(all_poses).view(
             self.K, self.T
@@ -74,7 +79,7 @@ class Waypoints:
             .sum(dim=1)
         )
 
-        result = collision_cost.add(obs_dist_cost).add(smoothness)
+        result = collision_cost.add(obs_dist_cost).add(smoothness).add(distance_cost)
 
         colliding = collision_cost.nonzero()
         result[colliding] = 1000000000

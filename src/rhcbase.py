@@ -19,7 +19,7 @@ motion_models = {"kinematic": model.Kinematics}
 
 trajgens = {"tl": trajgen.TL, "dispersion": trajgen.Dispersion}
 
-cost_functions = {"waypoints": cost.Waypoints}
+cost_functions = {"single-goal": cost.SingleGoal}
 
 world_reps = {"simple": worldrep.Simple}
 
@@ -57,7 +57,7 @@ class RHCBase(object):
         return trajgens[tgname](self.params, self.logger, self.dtype, model)
 
     def get_cost_fn(self):
-        cfname = self.params.get_str("cost_fn_name", default="waypoints")
+        cfname = self.params.get_str("cost_fn_name", default="single-goal")
         if cfname not in cost_functions:
             self.logger.fatal("cost_fn '{}' is not valid".format(cfname))
 
