@@ -23,6 +23,7 @@ import utils
 
 
 class RHCNode(rhcbase.RHCBase):
+
     def __init__(self, dtype, params, logger, name):
         rospy.init_node(name, anonymous=True, disable_signals=True)
 
@@ -41,27 +42,14 @@ class RHCNode(rhcbase.RHCBase):
         self.events = [self.goal_event, self.map_metadata_event, self.ready_event]
         self.run = True
 
-        self.do_profile = self.params.get_bool("profile", default=False)
-
-    def start_profile(self):
-        if self.do_profile:
-            self.logger.warn("Running with profiling")
-            self.pr = cProfile.Profile()
-            self.pr.enable()
-
-    def end_profile(self):
-        if self.do_profile:
-            self.pr.disable()
-            self.pr.dump_stats(os.path.expanduser("~/mushr_rhc_stats.prof"))
-
     def start(self):
         self.logger.info("Starting RHController")
-        self.start_profile()
         self.setup_pub_sub()
         self.rhctrl = self.load_controller()
         self.T = self.params.get_int("T")
 
         self.ready_event.set()
+        print("ready")
 
         rate = rospy.Rate(50)
         self.logger.info("Initialized")
@@ -82,8 +70,6 @@ class RHCNode(rhcbase.RHCBase):
                     self.expr_at_goal.publish(Empty())
                     self.goal_event.clear()
             rate.sleep()
-
-        self.end_profile()
 
     def run_loop(self, ip):
         self.goal_event.wait()

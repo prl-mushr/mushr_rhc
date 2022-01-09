@@ -22,6 +22,7 @@ class Simple:
         self.logger = logger
         self.dtype = dtype
         self.map = map
+        self.logger.warn("Loading permissible region...")
         self.perm_reg = utils.map.load_permissible_region(self.params, self.map)
 
         self.reset()

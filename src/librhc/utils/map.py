@@ -6,7 +6,7 @@ import os
 import numpy as np
 import torch
 
-import cache
+from . import cache
 import rhctensor
 
 

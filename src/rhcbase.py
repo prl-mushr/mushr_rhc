@@ -39,6 +39,7 @@ class RHCBase(object):
         m = self.get_model()
         tg = self.get_trajgen(m)
         cf = self.get_cost_fn()
+        print("costfn")
 
         return librhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
 
@@ -65,10 +66,10 @@ class RHCBase(object):
         if wrname not in world_reps:
             self.logger.fatal("world_rep '{}' is not valid".format(wrname))
 
-        self.logger.debug("Waiting for map metadata")
+        self.logger.warn("Waiting for map metadata")
         while self.map_data is None:
             rospy.sleep(0.1)
-        self.logger.debug("Recieved map metadata")
+        self.logger.warn("Recieved map metadata")
 
         wr = world_reps[wrname](self.params, self.logger, self.dtype, self.map_data)
 
@@ -77,7 +78,7 @@ class RHCBase(object):
         )
 
     def cb_map_metadata(self, msg):
-        default_map_name = "default"
+        default_map_name = "default_map"
         map_file = self.params.get_str(
             "map_file", default=default_map_name, global_=True
         )
@@ -103,9 +104,9 @@ class RHCBase(object):
 
     def get_map(self):
         srv_name = self.params.get_str("static_map", default="/static_map")
-        self.logger.debug("Waiting for map service")
+        self.logger.warn("Waiting for map service")
         rospy.wait_for_service(srv_name)
-        self.logger.debug("Map service started")
+        self.logger.warn("Map service started")
 
         map_msg = rospy.ServiceProxy(srv_name, GetMap)().map
         return map_msg.data

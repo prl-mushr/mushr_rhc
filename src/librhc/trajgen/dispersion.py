@@ -6,6 +6,7 @@ from itertools import product
 
 import torch
 from scipy.spatial.distance import directed_hausdorff
+from progress.bar import Bar
 
 import librhc.utils as utils
 
@@ -27,6 +28,7 @@ class Dispersion:
     def reset(self):
         self.K = self.params.get_int("K", default=62)
         self.T = self.params.get_int("T", default=15)
+        self.logger.info("Generating {} trajectories for control, this will take a minute".format(self.K))
 
         # Number of resamples in control space
         branching_factor = self.params.get_int(
@@ -126,7 +128,9 @@ class Dispersion:
         def hausdorff(a, b):
             return max(directed_hausdorff(a, b)[0], directed_hausdorff(b, a)[0])
 
-        for _ in range(self.K - 1):
+        progress_bar = Bar('Trajectories', max=self.K)
+        pruned_trajs = len(visited)
+        while len(visited) != self.K:
             max_i, max_dist = 0, 0
             for rollout in range(len(ms_ctrls)):
                 if rollout in visited:
@@ -144,6 +148,10 @@ class Dispersion:
                     max_i, max_dist = rollout, min_dist
 
             visited[max_i] = ms_poses[max_i]
+            if len(visited) != pruned_trajs:
+                progress_bar.next()
+                pruned_trajs = len(visited)
+        progress_bar.finish()
 
         assert len(visited) == self.K
         self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
