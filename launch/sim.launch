@@ -1,6 +1,6 @@
 <launch>
     <arg name="tg" default="dispersion" />
-	<arg name="car_name" default="car" />
+    <arg name="car_name" default="car" />
 
     <group ns="$(arg car_name)">
         <node pkg="mushr_rhc" type="rhcnode.py" name="rhcontroller" output="screen">

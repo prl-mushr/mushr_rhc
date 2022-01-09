@@ -33,8 +33,7 @@ def world2map(mapdata, poses, out=None):
 
     out[:, 0] = xs * mapdata.angle_cos - ys * mapdata.angle_sin
     out[:, 1] = xs_p * mapdata.angle_sin + ys * mapdata.angle_cos
-
-
+    
 def world2mapnp(mapdata, poses):
     # translation
     poses[:, 0] -= mapdata.origin_x

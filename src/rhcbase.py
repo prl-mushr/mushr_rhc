@@ -39,7 +39,6 @@ class RHCBase(object):
         m = self.get_model()
         tg = self.get_trajgen(m)
         cf = self.get_cost_fn()
-        print("costfn")
 
         return librhc.MPC(self.params, self.logger, self.dtype, m, tg, cf)
 

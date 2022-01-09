@@ -55,9 +55,9 @@ class SingleGoal:
         all_poses = poses.view(self.K * self.T, self.NPOS)
 
         # Distance of end-point in traj to goal
-        distance_cost = np.sqrt(
-                ((goal[0] - poses[:, self.T, 0]) ** 2) + ((goal[1] - poses[:, self.T, 1]) ** 2)
-        )
+        #distance_cost = torch.sqrt(
+                #((goal[0] - poses[:, self.T-1, 0]) ** 2) + ((goal[1] - poses[:, self.T-1, 1]) ** 2)
+        #)
 
         # get all collisions (K, T, tensor)
         collisions = self.world_rep.check_collision_in_map(all_poses).view(

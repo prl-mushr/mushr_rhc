@@ -1,7 +1,7 @@
 <launch>
     <arg name="tg" default="tl" />
-	<arg name="car_name" default="car" />
-	<arg name="map_server" default="0" />
+    <arg name="car_name" default="car" />
+    <arg name="map_server" default="0" />
 
     <group ns="$(arg car_name)">
         <node pkg="mushr_rhc" type="rhcnode.py" name="rhcontroller" output="screen">

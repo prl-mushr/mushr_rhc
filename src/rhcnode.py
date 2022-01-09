@@ -49,7 +49,6 @@ class RHCNode(rhcbase.RHCBase):
         self.T = self.params.get_int("T")
 
         self.ready_event.set()
-        print("ready")
 
         rate = rospy.Rate(50)
         self.logger.info("Initialized")
