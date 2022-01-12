@@ -34,6 +34,7 @@ class Kinematics:
         self.dt = time_horizon / T
 
         self.sin2beta = self.dtype(self.K)
+        self.beta = self.dtype(self.K)
         self.deltaTheta = self.dtype(self.K)
         self.deltaX = self.dtype(self.K)
         self.deltaY = self.dtype(self.K)
@@ -43,37 +44,41 @@ class Kinematics:
     def apply(self, pose, ctrl):
         """
         Args:
-        pose [(K, NPOS) tensor] -- The current position in "world" coordinates
-        ctrl [(K, NCTRL) tensor] -- Control to apply to the current position
+            pose [(K, NPOS) tensor] -- The current position in "world" coordinates
+            ctrl [(K, NCTRL) tensor] -- Control to apply to the current position
         Return:
-        [(K, NCTRL) tensor] The next position given the current control
+            [(K, NPOS) tensor] The next position given the current control
         """
         assert pose.size() == (self.K, self.NPOS)
         assert ctrl.size() == (self.K, self.NCTRL)
 
-        self.sin2beta.copy_(ctrl[:, 1]).tan_().mul_(0.5).atan_().mul_(2.0).sin_().add_(
-            self.EPSILON
-        )
+        self.beta.copy_(ctrl[:,1]).tan_().mul_(0.5).atan_()
+        self.sin2beta.copy_(self.beta).sin_().mul_(2.0)
 
         self.deltaTheta.copy_(ctrl[:, 0]).div_(self.wheel_base).mul_(
             self.sin2beta
         ).mul_(self.dt)
 
-        self.sin.copy_(pose[:, 2]).sin_()
-        self.cos.copy_(pose[:, 2]).cos_()
+        self.sin.copy_(pose[:, 2]).add_(self.beta).sin_()
+        self.cos.copy_(pose[:, 2]).add_(self.beta).cos_()
 
-        self.deltaX.copy_(pose[:, 2]).add_(self.deltaTheta).sin_().sub_(self.sin).mul_(
-            self.wheel_base
-        ).div_(self.sin2beta)
+        self.deltaX.copy_(pose[:, 2]).add_(self.deltaTheta).add_(
+                self.beta).sin_().sub_(
+                        self.sin).mul_(self.wheel_base).div_(self.sin2beta)
 
-        self.deltaY.copy_(pose[:, 2]).add_(self.deltaTheta).cos_().neg_().add_(
-            self.cos
-        ).mul_(self.wheel_base).div_(self.sin2beta)
+        self.deltaY.copy_(pose[:, 2]).add_(
+                self.deltaTheta).add_(self.beta).cos_().neg_().add_(
+                        self.cos).mul_(self.wheel_base).div_(self.sin2beta)
 
         nextpos = self.dtype(self.K, 3)
         nextpos.copy_(pose)
         nextpos[:, 0].add_(self.deltaX)
         nextpos[:, 1].add_(self.deltaY)
         nextpos[:, 2].add_(self.deltaTheta)
+
+        # If straight
+        nextpos[ctrl[:, 1] < 0.01, 0 ].copy_(pose[ctrl[:, 1] < 0.01, 1]).cos_().mul(ctrl[ctrl[:, 1] < 0.01, 0]) 
+        nextpos[ctrl[:, 1] < 0.01, 1 ].copy_(pose[ctrl[:, 1] < 0.01, 1]).sin_().mul(ctrl[ctrl[:, 1] < 0.01, 0]) 
+        nextpos[ctrl[:, 1] < 0.01, 2 ].copy_(pose[ctrl[:, 1] < 0.01, 1]) 
 
         return nextpos

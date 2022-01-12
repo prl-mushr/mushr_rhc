@@ -155,7 +155,7 @@ class Dispersion:
 
         assert len(visited) == self.K
         self.ctrls = self.dtype(self.K, self.T, self.NCTRL)
-        self.ctrls.copy_(ms_ctrls[visited.keys()])
+        self.ctrls.copy_(ms_ctrls[list(visited.keys())])
 
     def get_control_trajectories(self, velocity):
         """

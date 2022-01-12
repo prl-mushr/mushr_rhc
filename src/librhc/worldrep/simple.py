@@ -93,7 +93,6 @@ class Simple:
         )
 
         bbox.div_(self.map.resolution)
-        print(L, W, bbox)
 
         x = bbox[:, 0].expand(len(poses), -1)
         y = bbox[:, 1].expand(len(poses), -1)
