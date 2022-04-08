@@ -8,7 +8,6 @@ from std_msgs.msg import Empty
 from std_msgs.msg import Header, Float32
 from std_srvs.srv import Empty as SrvEmpty
 from mushr_rhc.msg import XYHVPath
-from mushr_rhc.srv import FollowPath
 from visualization_msgs.msg import Marker
 
 import mpc
@@ -43,7 +42,7 @@ class ControlNode:
 
         rate = rospy.Rate(50)
         self.inferred_pose = None
-        print "Control Node Initialized"
+        print("Control Node Initialized")
 
         while not rospy.is_shutdown():
             self.path_event.wait()
@@ -81,10 +80,13 @@ class ControlNode:
 
         rospy.Subscriber("/initialpose",
                 PoseWithCovarianceStamped, self.cb_init_pose, queue_size=1)
+
+        rospy.Subscriber(
+            "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
+        )
+
         rospy.Subscriber("/controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
-
-        rospy.Service("/controller/follow_path", FollowPath, self.cb_path)
 
         rospy.Subscriber(rospy.get_param("~pose_cb", "/sim_car_pose/pose"),
                          PoseStamped, self.cb_pose, queue_size=10)
@@ -92,7 +94,7 @@ class ControlNode:
         self.rp_ctrls = rospy.Publisher(
             rospy.get_param(
                 "~ctrl_topic",
-                default="/vesc/high_level/ackermann_cmd_mux/input/nav_0"
+                default="mux/ackermann_cmd_mux/input/navigation"
             ),
             AckermannDriveStamped, queue_size=2
         )
@@ -166,13 +168,20 @@ class ControlNode:
         self.inferred_pose = utils.rospose_to_posetup(msg.pose.pose)
 
     def cb_path(self, msg):
-        print "Got path!"
+        print("Got path!")
         path = msg.path.waypoints
         self.visualize_path(path)
         self.controller.set_path(path)
         self.path_event.set()
-        print "Path set"
+        print("Path set")
         return True
+
+    def cb_goal(self, msg):
+        self.path = None
+        goal = utils.rospose_to_posetup(msg.pose)
+        self.controller.set_goal(goal)
+        self.path_event.set()
+        print("goal set")
 
     def cb_pose(self, msg):
         self.inferred_pose = [
@@ -182,6 +191,7 @@ class ControlNode:
 
     def publish_ctrl(self, ctrl):
         assert len(ctrl) == 2
+        print(ctrl)
         ctrlmsg = AckermannDriveStamped()
         ctrlmsg.header.stamp = rospy.Time.now()
         ctrlmsg.header.seq = self.ackermann_msg_id

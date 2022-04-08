@@ -56,7 +56,7 @@ add_message_files(
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES
-  FollowPath.srv
+#   FollowPath.srv
 )
 
 ## Generate actions in the 'action' folder
