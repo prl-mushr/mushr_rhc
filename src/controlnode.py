@@ -191,7 +191,6 @@ class ControlNode:
 
     def publish_ctrl(self, ctrl):
         assert len(ctrl) == 2
-        print(ctrl)
         ctrlmsg = AckermannDriveStamped()
         ctrlmsg.header.stamp = rospy.Time.now()
         ctrlmsg.header.seq = self.ackermann_msg_id

@@ -30,6 +30,8 @@ class ModelPredictiveController(BaseController):
             index = dist.argmin()
             index += int(self.waypoint_lookahead / self.waypoint_diff)
             index = min(index, len(self.path)-1)
+            if(len(self.path)==1):
+                return 0  # handle special case of a simple go-to pose
             return index
 
     def get_control(self, pose, index):
@@ -52,6 +54,9 @@ class ModelPredictiveController(BaseController):
 
         # Get speed from reference
         self.trajs[:, :, 0] = self.path[index, 3]
+        if(len(self.path) == 1):
+            delta = np.linalg.norm(pose[:2] - self.path[0,:2])
+            self.trajs[:,:,0] = min(2, delta*2)  # basically start slowing down at 1 meter distance.
 
         for t in range(1, self.T):
             cur_x = rollouts[:, t - 1]
@@ -98,8 +103,8 @@ class ModelPredictiveController(BaseController):
             self.T = int(rospy.get_param("mpc/T", 8))
 
             self.speed = float(rospy.get_param("mpc/speed", 1.0))
-            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 1.0))
-            self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 4.0))
+            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 0.1))
+            self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 100.0))
             # Average distance from the current reference pose to lookahed.
             self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 1.0))
             self.collision_w = float(rospy.get_param("mpc/collision_w", 1e5))

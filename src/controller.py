@@ -41,12 +41,10 @@ class BaseController(object):
         with self.path_lock:
 
             delta = np.array([np.cos(goal[2]), np.sin(goal[2])])
-            self.path = np.array([np.array([goal[0] - 0.05*delta[0], goal[1] - 0.05*delta[0], goal[2], 1]),
-                                  np.array([goal[0], goal[1], goal[2], 1])])  # hax
-            print(self.path)
+            self.path = np.array([np.array([goal[0], goal[1], goal[2], 1])])  # hax
             self.reset_state()
             self._ready = True
-            self.waypoint_diff = np.average(np.linalg.norm(np.diff(self.path[:, :2], axis=0), axis=1))
+            self.waypoint_diff = 1
 
     def path_complete(self, pose, error):
         '''
