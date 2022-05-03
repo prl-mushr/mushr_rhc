@@ -48,6 +48,7 @@ class ControlNode:
             self.path_event.wait()
             self.reset_lock.acquire()
             ip = self.inferred_pose
+
             if ip is not None and self.controller.ready():
                 index = self.controller.get_reference_index(ip)
                 pose = self.controller.get_reference_pose(index)
@@ -55,6 +56,7 @@ class ControlNode:
                 cte = error[1]
                 self.publish_selected_pose(pose)
                 self.publish_cte(cte)
+
                 next_ctrl = self.controller.get_control(ip, index)
                 if next_ctrl is not None:
                     self.publish_ctrl(next_ctrl)

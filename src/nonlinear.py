@@ -13,7 +13,7 @@ class NonLinearController(BaseController):
         self.reset_state()
 
     def get_reference_index(self, pose):
-        print self.path
+        print(self.path)
         with self.path_lock:
             # TODO: compute index of next point to optimize against
             pose = np.array(pose)
@@ -22,15 +22,15 @@ class NonLinearController(BaseController):
             index = dist.argmin()
             index += int(self.lookahead / self.waypoint_diff)
             index = min(index, len(self.path)-1)
-            print "INDEX " + str(index)
+            print("INDEX " + str(index))
             return index
 
     def get_control(self, pose, index):
         if self.prev_error is None:
-            print "No prev error"
+            print("No prev error")
             self.prev_error = 0.0
         if self.prev_ref_heading is None:
-            print "No prev error"
+            print("No prev error")
             self.prev_ref_heading = self.path[index][2]
             return [0.0, 0.0]
 
@@ -50,14 +50,14 @@ class NonLinearController(BaseController):
 
         self.prev_error = self.gain_p
         self.prev_ref_heading = self.path[index][2]
-        print "km        " + str(self.k_min)
-        print "k         " + str(curvature)
-        print "gp (error)" + str(self.gain_p)
-        print "kp        " + str(self.kp)
-        print "gd        " + str(self.gain_d)
-        print "kd        " + str(self.kd)
-        print "CONTROL   " + str(control)
-        print "---"
+        print("km        " + str(self.k_min))
+        print("k         " + str(curvature))
+        print("gp (error)" + str(self.gain_p))
+        print("kp        " + str(self.kp))
+        print("gd        " + str(self.gain_d))
+        print("kd        " + str(self.kd))
+        print("CONTROL   " + str(control))
+        print("---")
         return [v, float(control)]
 
     def reset_state(self):
