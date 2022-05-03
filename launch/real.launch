@@ -1,0 +1,23 @@
+<launch>
+    <arg name="car1_name" default="car1" />
+    <arg name="car_pose" default="/car_pose" />
+    <arg name="map_server" default="1" />
+
+    <group if="$(arg map_server)">
+        <include file="$(find mushr_base)/launch/includes/map_server.launch" />
+    </group>
+
+    <include file="$(find mushr_base)/launch/teleop.launch">
+        <arg name="car_name" value="car" />
+        <arg name="racecar_version" value="racecar-uw-nano" />
+    </include>
+    
+
+    <arg name="controller" default="MPC" />
+    <node pkg="mushr_rhc" type="main.py" name="controller" output="screen">
+        <param name="type" value="$(arg controller)" />
+        <param name="pose_cb" value="car_pose" />
+        <param name="use_sim_pose" value="0" />
+        <param name="use_odom_pose" value="1" />
+    </node>
+</launch>
