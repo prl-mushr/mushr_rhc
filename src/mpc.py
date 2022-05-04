@@ -103,15 +103,15 @@ class ModelPredictiveController(BaseController):
             self.T = int(rospy.get_param("mpc/T", 8))
 
             self.speed = float(rospy.get_param("mpc/speed", 1.0))
-            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 0.1))
+            self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 0.5))
             self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 100.0))
             # Average distance from the current reference pose to lookahed.
             self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 1.0))
             self.collision_w = float(rospy.get_param("mpc/collision_w", 1e5))
             self.error_w = float(rospy.get_param("mpc/error_w", 1.0))
 
-            self.car_length = float(rospy.get_param("mpc/car_length", 0.33))
-            self.car_width = float(rospy.get_param("mpc/car_width", 0.15))
+            self.car_length = float(rospy.get_param("mpc/car_length", 0.6))
+            self.car_width = float(rospy.get_param("mpc/car_width", 0.4))
 
     def get_control_trajectories(self):
         '''

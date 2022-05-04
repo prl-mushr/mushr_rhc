@@ -26,8 +26,7 @@ controllers = {
 
 class ControlNode:
     def __init__(self, name):
-        self.ackermann_msg_id = 0
-
+        self.ackermann_msg_id = 0        
         self.path_event = threading.Event()
         self.reset_lock = threading.Lock()
         self.ready_event = threading.Event()
@@ -54,14 +53,16 @@ class ControlNode:
                 pose = self.controller.get_reference_pose(index)
                 error = self.controller.get_error(ip, index)
                 cte = error[1]
+
                 self.publish_selected_pose(pose)
                 self.publish_cte(cte)
-
                 next_ctrl = self.controller.get_control(ip, index)
                 if next_ctrl is not None:
                     self.publish_ctrl(next_ctrl)
                 if self.controller.path_complete(ip, error):
                     self.path_event.clear()
+                    print(ip, error)
+
             self.reset_lock.release()
             rate.sleep()
 
@@ -72,7 +73,8 @@ class ControlNode:
         exit(0)
 
     def load_controller(self):
-        self.controller_type = rospy.get_param("/controller/type", default="PID")
+        self.controller_type = rospy.get_param("~controller/type", default="PID")
+        print(self.controller_type)
         self.controller = controllers[self.controller_type]()
 
     def setup_pub_sub(self):
@@ -183,7 +185,7 @@ class ControlNode:
         goal = utils.rospose_to_posetup(msg.pose)
         self.controller.set_goal(goal)
         self.path_event.set()
-        print("goal set")
+        print("goal set", goal)
 
     def cb_pose(self, msg):
         self.inferred_pose = [
