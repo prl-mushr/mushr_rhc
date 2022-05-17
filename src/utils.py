@@ -24,7 +24,7 @@ def rospose_to_posetup(posemsg):
     return x, y, th
 
 def rospoint_to_posetup(pointmsg):
-    x = pointmsg.point.y
-    y = pointmsg.point.x
+    x = pointmsg.point.x
+    y = pointmsg.point.y
     th = 0
     return x, y, th

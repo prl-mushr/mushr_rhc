@@ -116,26 +116,17 @@ class ControlNode:
         )
 
         self.rp_waypoints = rospy.Publisher(
-            rospy.get_param(
-                "~waypoint_viz_topic",
-                default="/controller/path/waypoints"
-            ),
+            "/controller/path/waypoints",
             Marker, queue_size=2
         )
 
         self.rp_waypoint = rospy.Publisher(
-            rospy.get_param(
-                "~selected_waypoint_viz_topic",
-                default="/controller/path/selected_waypoint"
-            ),
+            "/controller/path/selected_waypoint",
             PoseStamped, queue_size=2
         )
 
         self.rp_path_viz = rospy.Publisher(
-            rospy.get_param(
-                "~poses_viz_topic",
-                default="/controller/path/poses"
-            ),
+            "/controller/path/poses",
             PoseArray, queue_size=2
         )
 
@@ -246,6 +237,7 @@ class ControlNode:
         marker.scale.y = 0.1
         marker.scale.z = 0.1
         marker.color.a = 1.0
+        marker.lifetime = { sec: 0, nsec: 0 }
         if point_type == "waypoint":
             marker.color.b = 1.0
         else:
@@ -256,7 +248,7 @@ class ControlNode:
     def publish_selected_pose(self, pose):
         p = PoseStamped()
         p.header = Header()
-        p.header.stamp = rospy.Time.now()
+        p.header.stamp = rospy.Time.now() - rospy.Duration(0.1) # set to in the past to visualize longer
         p.header.frame_id = "map"
         p.pose.position.x = pose[0]
         p.pose.position.y = pose[1]
