@@ -2,7 +2,7 @@ import rospy
 import threading
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PoseArray, Pose, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose, PointStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from std_msgs.msg import Header, Float32
@@ -73,7 +73,7 @@ class ControlNode:
         exit(0)
 
     def load_controller(self):
-        self.controller_type = rospy.get_param("~controller/type", default="PID")
+        self.controller_type = rospy.get_param("~controller/type", default="MPC")
         print(self.controller_type)
         self.controller = controllers[self.controller_type]()
 
@@ -86,20 +86,24 @@ class ControlNode:
                 PoseWithCovarianceStamped, self.cb_init_pose, queue_size=1)
 
         rospy.Subscriber(
+            "/clicked_point",
+            PointStamped,
+            self.clicked_point_cb,
+            queue_size=1
+        )
+
+        rospy.Subscriber(
             "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
         )
 
         rospy.Subscriber("/controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
 
-        rospy.Subscriber(rospy.get_param("~pose_cb", "/sim_car_pose/pose"),
+        rospy.Subscriber("/car/particle_filter/inferred_pose",
                          PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
-            rospy.get_param(
-                "~ctrl_topic",
-                default="mux/ackermann_cmd_mux/input/navigation"
-            ),
+            "/car/mux/ackermann_cmd_mux/input/navigation",
             AckermannDriveStamped, queue_size=2
         )
 
@@ -183,6 +187,13 @@ class ControlNode:
     def cb_goal(self, msg):
         self.path = None
         goal = utils.rospose_to_posetup(msg.pose)
+        self.controller.set_goal(goal)
+        self.path_event.set()
+        print("goal set", goal)
+
+    def clicked_point_cb(self, msg):
+        self.path = None
+        goal = utils.rospoint_to_posetup(msg)
         self.controller.set_goal(goal)
         self.path_event.set()
         print("goal set", goal)

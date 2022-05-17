@@ -1,6 +1,6 @@
 import tf.transformations
 
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, PointStamped
 
 
 def angle_to_rosquaternion(angle):
@@ -21,4 +21,10 @@ def rospose_to_posetup(posemsg):
     x = posemsg.position.x
     y = posemsg.position.y
     th = rosquaternion_to_angle(posemsg.orientation)
+    return x, y, th
+
+def rospoint_to_posetup(pointmsg):
+    x = pointmsg.point.y
+    y = pointmsg.point.x
+    th = 0
     return x, y, th
