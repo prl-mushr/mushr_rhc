@@ -28,7 +28,8 @@ class ModelPredictiveController(BaseController):
             diff = self.path[:, :3] - pose
             dist = np.linalg.norm(diff[:, :2], axis=1)
             index = dist.argmin()
-            index += int(self.waypoint_lookahead / self.waypoint_diff)
+            if(dist.min() < self.waypoint_lookahead):
+                index += 1
             index = min(index, len(self.path)-1)
             if(len(self.path)==1):
                 return 0  # handle special case of a simple go-to pose
@@ -54,6 +55,7 @@ class ModelPredictiveController(BaseController):
 
         # Get speed from reference
         self.trajs[:, :, 0] = self.path[index, 3]
+
         if(len(self.path) == 1):
             delta = np.linalg.norm(pose[:2] - self.path[0,:2])
             self.trajs[:,:,0] = min(2, delta*2)  # basically start slowing down at 1 meter distance.

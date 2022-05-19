@@ -8,7 +8,7 @@
     <!-- We take a map path either as an environment variable or an argument.
          The environment variable has precedence. -->
     <arg name="_env_map" default="$(optenv MAP)" />
-    <arg name="map" default="$(find mushr_sim)/maps/gates.yaml"/>
+    <arg name="map" default="$(find mushr_sim)/maps/real-floor0.yaml"/>
     <arg name="use_tf_prefix" default="true" />
     <arg name="fake_localization" default="true" />
     <arg name="initial_x" default="0"/>

@@ -173,7 +173,7 @@ class ControlNode:
 
     def cb_path(self, msg):
         print("Got path!")
-        path = msg.path.waypoints
+        path = msg.waypoints
         self.visualize_path(path)
         self.controller.set_path(path)
         self.path_event.set()
