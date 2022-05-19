@@ -237,7 +237,7 @@ class ControlNode:
         marker.scale.y = 0.1
         marker.scale.z = 0.1
         marker.color.a = 1.0
-        marker.lifetime = { sec: 0, nsec: 0 }
+        # marker.lifetime = { sec: 0, nsec: 0 }
         if point_type == "waypoint":
             marker.color.b = 1.0
         else:
