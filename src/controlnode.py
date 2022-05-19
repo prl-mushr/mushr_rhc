@@ -2,7 +2,7 @@ import rospy
 import threading
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from geometry_msgs.msg import PoseStamped, PoseArray, Pose, PoseWithCovarianceStamped
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose, PointStamped, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from std_msgs.msg import Header, Float32
@@ -73,7 +73,7 @@ class ControlNode:
         exit(0)
 
     def load_controller(self):
-        self.controller_type = rospy.get_param("~controller/type", default="PID")
+        self.controller_type = rospy.get_param("~controller/type", default="MPC")
         print(self.controller_type)
         self.controller = controllers[self.controller_type]()
 
@@ -86,20 +86,24 @@ class ControlNode:
                 PoseWithCovarianceStamped, self.cb_init_pose, queue_size=1)
 
         rospy.Subscriber(
+            "/clicked_point",
+            PointStamped,
+            self.clicked_point_cb,
+            queue_size=1
+        )
+
+        rospy.Subscriber(
             "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
         )
 
         rospy.Subscriber("/controller/set_path",
                 XYHVPath, self.cb_path, queue_size=1)
 
-        rospy.Subscriber(rospy.get_param("~pose_cb", "/sim_car_pose/pose"),
+        rospy.Subscriber("/car/particle_filter/inferred_pose",
                          PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
-            rospy.get_param(
-                "~ctrl_topic",
-                default="mux/ackermann_cmd_mux/input/navigation"
-            ),
+            "/car/mux/ackermann_cmd_mux/input/navigation",
             AckermannDriveStamped, queue_size=2
         )
 
@@ -112,26 +116,17 @@ class ControlNode:
         )
 
         self.rp_waypoints = rospy.Publisher(
-            rospy.get_param(
-                "~waypoint_viz_topic",
-                default="/controller/path/waypoints"
-            ),
+            "/controller/path/waypoints",
             Marker, queue_size=2
         )
 
         self.rp_waypoint = rospy.Publisher(
-            rospy.get_param(
-                "~selected_waypoint_viz_topic",
-                default="/controller/path/selected_waypoint"
-            ),
+            "/controller/path/selected_waypoint",
             PoseStamped, queue_size=2
         )
 
         self.rp_path_viz = rospy.Publisher(
-            rospy.get_param(
-                "~poses_viz_topic",
-                default="/controller/path/poses"
-            ),
+            "/controller/path/poses",
             PoseArray, queue_size=2
         )
 
@@ -187,6 +182,13 @@ class ControlNode:
         self.path_event.set()
         print("goal set", goal)
 
+    def clicked_point_cb(self, msg):
+        self.path = None
+        goal = utils.rospoint_to_posetup(msg)
+        self.controller.set_goal(goal)
+        self.path_event.set()
+        print("goal set", goal)
+
     def cb_pose(self, msg):
         self.inferred_pose = [
             msg.pose.position.x,
@@ -235,6 +237,7 @@ class ControlNode:
         marker.scale.y = 0.1
         marker.scale.z = 0.1
         marker.color.a = 1.0
+        marker.lifetime = { sec: 0, nsec: 0 }
         if point_type == "waypoint":
             marker.color.b = 1.0
         else:
@@ -245,7 +248,7 @@ class ControlNode:
     def publish_selected_pose(self, pose):
         p = PoseStamped()
         p.header = Header()
-        p.header.stamp = rospy.Time.now()
+        p.header.stamp = rospy.Time.now() - rospy.Duration(0.1) # set to in the past to visualize longer
         p.header.frame_id = "map"
         p.pose.position.x = pose[0]
         p.pose.position.y = pose[1]
