@@ -1,7 +1,7 @@
 import numpy as np
 import rospy
 import utils
-
+import time
 from controller import BaseController
 
 from nav_msgs.srv import GetMap
@@ -54,23 +54,30 @@ class ModelPredictiveController(BaseController):
         rollouts[:, 0, :] = np.array(pose)
 
         # Get speed from reference
-        self.trajs[:, :, 0] = self.path[index, 3]
+        speed_sign = np.array([-1, 0, 1])
+        min_cost = 1000000000
+        min_cost_ctrl = np.zeros(2)
+        final_sign = -1
+        for sign in range(3):
+            self.trajs[:, :, 0] = self.path[index, 3] * speed_sign[sign] 
 
-        if(len(self.path) == 1):
-            delta = np.linalg.norm(pose[:2] - self.path[0,:2])
-            self.trajs[:,:,0] = min(2, delta*2)  # basically start slowing down at 1 meter distance.
+            for t in range(1, self.T):
+                cur_x = rollouts[:, t - 1]
+                xdot, ydot, thetadot = self.apply_kinematics(cur_x, self.trajs[:, t - 1])
+                rollouts[:, t, 0] = cur_x[:, 0] + xdot
+                rollouts[:, t, 1] = cur_x[:, 1] + ydot
+                rollouts[:, t, 2] = cur_x[:, 2] + thetadot
 
-        for t in range(1, self.T):
-            cur_x = rollouts[:, t - 1]
-            xdot, ydot, thetadot = self.apply_kinematics(cur_x, self.trajs[:, t - 1])
-            rollouts[:, t, 0] = cur_x[:, 0] + xdot
-            rollouts[:, t, 1] = cur_x[:, 1] + ydot
-            rollouts[:, t, 2] = cur_x[:, 2] + thetadot
+            costs = self.apply_cost(rollouts, index)
 
-        costs = self.apply_cost(rollouts, index)
-        min_control = np.argmin(costs)
+            min_control = np.argmin(costs)
+            if(min_cost > costs[min_control]):
+                min_cost = costs[min_control]
+                min_cost_ctrl = self.trajs[min_control][0]
+                final_sign = speed_sign[sign]
+        min_cost_ctrl[0] *= final_sign
         #rosviz.viz_paths_cmap(torch.from_numpy(rollouts), torch.from_numpy(costs))
-        return self.trajs[min_control][0]
+        return min_cost_ctrl
 
     def reset_state(self):
         '''
@@ -165,8 +172,7 @@ class ModelPredictiveController(BaseController):
         collisions = self.check_collisions_in_map(all_poses)
         collisions.resize(self.K, self.T)
         collision_cost = collisions.sum(axis=1) * self.collision_w
-        error_cost = np.linalg.norm(poses[:, self.T - 1, :2] - self.path[index, :2], axis=1) * self.error_w
-
+        error_cost = np.linalg.norm(poses[:, self.T - 1, :2] - self.path[index, :2], axis = 1) * self.error_w
         return collision_cost + error_cost
 
     def check_collisions_in_map(self, poses):
