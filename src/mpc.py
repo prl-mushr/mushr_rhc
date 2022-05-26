@@ -53,13 +53,13 @@ class ModelPredictiveController(BaseController):
         rollouts = np.zeros((self.K, self.T, 3))
         rollouts[:, 0, :] = np.array(pose)
 
-        # Get speed from reference
-        speed_sign = np.array([-1, 0, 1])
-        min_cost = 1000000000
-        min_cost_ctrl = np.zeros(2)
-        final_sign = -1
+        speed_sign = np.array([-1, 0, 1])  # we got 3 speeds, forward V, 0, reverse V, where V is the desired speed from the xyhv waypoint
+        min_cost = 1000000000   # very large initial cost because we are looking for the minimum.
+        min_cost_ctrl = np.zeros(2)  # default controls are no steering and no throttle
         for sign in range(3):
-            self.trajs[:, :, 0] = self.path[index, 3] * speed_sign[sign] 
+            self.trajs[:, :, 0] = self.path[index, 3] * speed_sign[sign]  # multiply magnitude with sign
+
+            # perform rollouts for each control trajectory
 
             for t in range(1, self.T):
                 cur_x = rollouts[:, t - 1]
@@ -68,15 +68,12 @@ class ModelPredictiveController(BaseController):
                 rollouts[:, t, 1] = cur_x[:, 1] + ydot
                 rollouts[:, t, 2] = cur_x[:, 2] + thetadot
 
-            costs = self.apply_cost(rollouts, index)
+            costs = self.apply_cost(rollouts, index)  # get the cost for each roll out
 
-            min_control = np.argmin(costs)
-            if(min_cost > costs[min_control]):
-                min_cost = costs[min_control]
-                min_cost_ctrl = self.trajs[min_control][0]
-                final_sign = speed_sign[sign]
-        min_cost_ctrl[0] *= final_sign
-        #rosviz.viz_paths_cmap(torch.from_numpy(rollouts), torch.from_numpy(costs))
+            min_control = np.argmin(costs)  # find the min
+            if(min_cost > costs[min_control]):  # if the min is less than global min,
+                min_cost = costs[min_control]  # reset global min
+                min_cost_ctrl = np.copy(self.trajs[min_control][0])  # save the last best control set.
         return min_cost_ctrl
 
     def reset_state(self):
