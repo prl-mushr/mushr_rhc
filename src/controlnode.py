@@ -7,7 +7,8 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Empty
 from std_msgs.msg import Header, Float32
 from std_srvs.srv import Empty as SrvEmpty
-from mushr_rhc.msg import XYHVPath
+from mushr_rhc.msg import XYHVPath, XYHV
+from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker
 
 import mpc
@@ -48,20 +49,26 @@ class ControlNode:
             self.reset_lock.acquire()
             ip = self.inferred_pose
 
-            if ip is not None and self.controller.ready():
-                index = self.controller.get_reference_index(ip)
-                pose = self.controller.get_reference_pose(index)
-                error = self.controller.get_error(ip, index)
-                cte = error[1]
+            try:
 
-                self.publish_selected_pose(pose)
-                self.publish_cte(cte)
-                next_ctrl = self.controller.get_control(ip, index)
-                if next_ctrl is not None:
-                    self.publish_ctrl(next_ctrl)
-                if self.controller.path_complete(ip, error):
-                    self.path_event.clear()
-                    print(ip, error)
+                if ip is not None and self.controller.ready():
+                    index = self.controller.get_reference_index(ip)
+                    pose = self.controller.get_reference_pose(index)
+                    error = self.controller.get_error(ip, index)
+                    cte = error[1]
+
+                    self.publish_selected_pose(pose)
+                    self.publish_cte(cte)
+
+                    next_ctrl = self.controller.get_control(ip, index)
+                    if next_ctrl is not None:
+                        self.publish_ctrl(next_ctrl)
+                    if self.controller.path_complete(ip, error):
+                        self.path_event.clear()
+                        print(ip, error)
+                        self.controller._ready = False
+            except:
+                pass
 
             self.reset_lock.release()
             rate.sleep()
@@ -93,13 +100,13 @@ class ControlNode:
         )
 
         rospy.Subscriber(
-            "/move_base_simple/goal", PoseStamped, self.cb_goal, queue_size=1
+            "/car/goal", PoseStamped, self.cb_goal, queue_size=1
         )
 
-        rospy.Subscriber("/controller/set_path",
-                XYHVPath, self.cb_path, queue_size=1)
+        rospy.Subscriber("/car/global_planner/path",
+                Path, self.cb_path, queue_size=1)
 
-        rospy.Subscriber("/car/particle_filter/inferred_pose",
+        rospy.Subscriber("/car/car_pose",
                          PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
@@ -168,8 +175,19 @@ class ControlNode:
 
     def cb_path(self, msg):
         print("Got path!")
-        path = msg.waypoints
-        self.visualize_path(path)
+        trajectory = XYHVPath()
+        for i in range(len(msg.poses)):
+            point = XYHV()
+            point.x = msg.poses[i].pose.position.x
+            point.y = msg.poses[i].pose.position.y
+            point.h = utils.rosquaternion_to_angle(msg.poses[i].pose.orientation)
+            if(i != len(msg.poses) - 1):
+                point.v = 1
+            else:
+                point.v = 0
+            trajectory.waypoints.append(point)
+        path = trajectory.waypoints
+        # self.visualize_path(path)
         self.controller.set_path(path)
         self.path_event.set()
         print("Path set")

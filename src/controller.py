@@ -60,7 +60,7 @@ class BaseController(object):
                 reached the end of the path
         '''
         err_l2 = np.linalg.norm(error)
-        return (self.get_reference_index(pose) == (len(self.path) - 1) and err_l2 < self.finish_threshold) or (err_l2 > self.exceed_threshold)
+        return (self.get_reference_index(pose) >= (len(self.path) - 2) and err_l2 < self.finish_threshold) or (err_l2 > self.exceed_threshold)
 
     def get_reference_pose(self, index):
         '''

@@ -28,11 +28,13 @@ class ModelPredictiveController(BaseController):
             diff = self.path[:, :3] - pose
             dist = np.linalg.norm(diff[:, :2], axis=1)
             index = dist.argmin()
-            if(dist.min() < self.waypoint_lookahead):
+            while(dist[index] < self.waypoint_lookahead and index <= len(self.path) - 2):
                 index += 1
-            index = min(index, len(self.path)-1)
+                index = min(index, len(self.path)-1)
             if(len(self.path)==1):
+                self.index = 0
                 return 0  # handle special case of a simple go-to pose
+            self.index = index
             return index
 
     def get_control(self, pose, index):
@@ -93,6 +95,8 @@ class ModelPredictiveController(BaseController):
             self.map_angle = utils.rosquaternion_to_angle(self.map.info.origin.orientation)
             self.map_c = np.cos(self.map_angle)
             self.map_s = np.sin(self.map_angle)
+            self.index = 0
+
 
     def reset_params(self):
         '''
@@ -112,9 +116,9 @@ class ModelPredictiveController(BaseController):
             self.finish_threshold = float(rospy.get_param("mpc/finish_threshold", 0.5))
             self.exceed_threshold = float(rospy.get_param("mpc/exceed_threshold", 100.0))
             # Average distance from the current reference pose to lookahed.
-            self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 1.0))
+            self.waypoint_lookahead = float(rospy.get_param("mpc/waypoint_lookahead", 0.5))
             self.collision_w = float(rospy.get_param("mpc/collision_w", 1e5))
-            self.error_w = float(rospy.get_param("mpc/error_w", 1.0))
+            self.error_w = float(rospy.get_param("mpc/error_w", 10.0))
 
             self.car_length = float(rospy.get_param("mpc/car_length", 0.6))
             self.car_width = float(rospy.get_param("mpc/car_width", 0.4))
