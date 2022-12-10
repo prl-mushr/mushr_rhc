@@ -106,7 +106,7 @@ class ControlNode:
         rospy.Subscriber("/car/global_planner/path",
                 Path, self.cb_path, queue_size=1)
 
-        rospy.Subscriber("/car/car_pose",
+        rospy.Subscriber(rospy.get_param("~pose_cb"),
                          PoseStamped, self.cb_pose, queue_size=10)
 
         self.rp_ctrls = rospy.Publisher(
