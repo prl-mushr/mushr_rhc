@@ -1,18 +1,12 @@
 <launch>
-    <arg name="tg" default="tl" />
     <arg name="car_name" default="car" />
-    <arg name="map_server" default="0" />
+    <arg name="car_pose" default="/particle_filter/inferred_pose" />
+    <arg name="controller" default="MPC" />
 
-    <group ns="$(arg car_name)">
-        <node pkg="mushr_rhc" type="rhcnode.py" name="rhcontroller" output="screen">
-            <env name="RHC_USE_CUDA" value="0" />
-
-            <param name="inferred_pose_t" value="particle_filter/inferred_pose" />
-            <param name="car_name" value="$(arg car_name)" />
-
-            <rosparam file="$(find mushr_rhc)/config/trajgen/$(arg tg).yaml" />
-            <rosparam file="$(find mushr_rhc)/config/config.yaml" />
-            <rosparam file="$(find mushr_rhc)/config/real.yaml" />
-        </node>
-    </group>
+    <node pkg="mushr_rhc" type="main.py" name="controller" output="screen">
+        <param name="type" value="$(arg controller)" />
+        <param name="pose_cb" value="/$(arg car_name)$(arg car_pose)" />
+        <param name="use_sim_pose" value="0" />
+        <param name="use_odom_pose" value="1" />
+    </node>
 </launch>

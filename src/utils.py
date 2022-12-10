@@ -1,8 +1,6 @@
-# Copyright (c) 2019, The Personal Robotics Lab, The MuSHR Team, The Contributors of MuSHR
-# License: BSD 3-Clause. See LICENSE.md file in root directory.
-
 import tf.transformations
-from geometry_msgs.msg import Quaternion
+
+from geometry_msgs.msg import Quaternion, PointStamped
 
 
 def angle_to_rosquaternion(angle):
@@ -23,4 +21,10 @@ def rospose_to_posetup(posemsg):
     x = posemsg.position.x
     y = posemsg.position.y
     th = rosquaternion_to_angle(posemsg.orientation)
+    return x, y, th
+
+def rospoint_to_posetup(pointmsg):
+    x = pointmsg.point.x
+    y = pointmsg.point.y
+    th = 0
     return x, y, th
