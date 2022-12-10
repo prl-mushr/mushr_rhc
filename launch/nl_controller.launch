@@ -1,0 +1,10 @@
+<launch>
+    <arg name="controller" default="NL" />
+
+    <node pkg="mushr_rhc" type="main.py" name="controller" output="screen">
+        <param name="type" value="$(arg controller)" />
+
+        <param name="use_sim_pose" value="1" />
+        <param name="use_odom_pose" value="0" />
+    </node>
+</launch>

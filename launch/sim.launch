@@ -1,0 +1,13 @@
+<launch>
+    <arg name="car1_name" default="car1" />
+    <arg name="car_name" default="car" />
+    <arg name="car_pose" default="/car_pose" />
+    <arg name="controller" default="MPC" />
+
+    <node pkg="mushr_rhc" type="main.py" name="controller" output="screen">
+        <param name="type" value="$(arg controller)" />
+        <param name="pose_cb" value="/$(arg car_name)$(arg car_pose)" />
+        <param name="use_sim_pose" value="1" />
+        <param name="use_odom_pose" value="0" />
+    </node>
+</launch>
