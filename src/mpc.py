@@ -87,7 +87,7 @@ class ModelPredictiveController(BaseController):
             assert self.trajs.shape == (self.K, self.T, 2)
             self.scaled = np.zeros((self.K * self.T, 3))
             self.bbox_map = np.zeros((self.K * self.T, 2, 4))
-            self.perm = np.zeros(self.K * self.T).astype(np.int)
+            self.perm = np.zeros(self.K * self.T).astype(int)
             self.map = self.get_map()
             self.perm_reg = self.load_permissible_region(self.map)
             self.map_x = self.map.info.origin.position.x
@@ -213,7 +213,7 @@ class ModelPredictiveController(BaseController):
         self.bbox_map[:, 0] = (x * c - y * s) + np.tile(np.resize(xs, (len(xs), 1)), 4)
         self.bbox_map[:, 1] = (x * s + y * c) + np.tile(np.resize(ys, (len(ys), 1)), 4)
 
-        bbox_idx = self.bbox_map.astype(np.int)
+        bbox_idx = self.bbox_map.astype(int)
 
         self.perm[:] = 0
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 0], bbox_idx[:, 0, 0]])
@@ -221,7 +221,7 @@ class ModelPredictiveController(BaseController):
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 2], bbox_idx[:, 0, 2]])
         self.perm = np.logical_or(self.perm, self.perm_reg[bbox_idx[:, 1, 3], bbox_idx[:, 0, 3]])
 
-        return self.perm.astype(np.float)
+        return self.perm.astype(float)
 
     def get_map(self):
         '''
